@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -17,6 +17,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 /* <DESC>
@@ -31,7 +33,7 @@
  *
  * Written by Jeff Pohlmeyer, converted to use epoll by Josh Bialkowski
 
-Requires a linux system with epoll
+Requires a Linux system with epoll
 
 When running, the program creates the named pipe "hiper.fifo"
 
@@ -136,8 +138,8 @@ static void mcode_or_die(const char *where, CURLMcode code)
 
 static void timer_cb(GlobalInfo* g, int revents);
 
-/* Update the timer after curl_multi library does it's thing. Curl will
- * inform us through this callback what it wants the new timeout to be,
+/* Update the timer after curl_multi library does its thing. Curl informs the
+ * application through this callback what it wants the new timeout to be,
  * after it does some work. */
 static int multi_timer_cb(CURLM *multi, long timeout_ms, GlobalInfo *g)
 {
@@ -164,7 +166,7 @@ static int multi_timer_cb(CURLM *multi, long timeout_ms, GlobalInfo *g)
     memset(&its, 0, sizeof(struct itimerspec));
   }
 
-  timerfd_settime(g->tfd, /*flags=*/0, &its, NULL);
+  timerfd_settime(g->tfd, /* flags= */0, &its, NULL);
   return 0;
 }
 
@@ -195,7 +197,7 @@ static void check_multi_info(GlobalInfo *g)
   }
 }
 
-/* Called by libevent when we get action on a multi socket filedescriptor*/
+/* Called by libevent when we get action on a multi socket filedescriptor */
 static void event_cb(GlobalInfo *g, int fd, int revents)
 {
   CURLMcode rc;
@@ -224,11 +226,11 @@ static void timer_cb(GlobalInfo* g, int revents)
 
   err = read(g->tfd, &count, sizeof(uint64_t));
   if(err == -1) {
-    /* Note that we may call the timer callback even if the timerfd isn't
+    /* Note that we may call the timer callback even if the timerfd is not
      * readable. It's possible that there are multiple events stored in the
-     * epoll buffer (i.e. the timer may have fired multiple times). The
-     * event count is cleared after the first call so future events in the
-     * epoll buffer will fail to read from the timer. */
+     * epoll buffer (i.e. the timer may have fired multiple times). The event
+     * count is cleared after the first call so future events in the epoll
+     * buffer fails to read from the timer. */
     if(errno == EAGAIN) {
       fprintf(MSG_OUT, "EAGAIN on tfd %d\n", g->tfd);
       return;
@@ -352,13 +354,13 @@ static int prog_cb(void *p, double dltotal, double dlnow, double ult,
 
 
 /* Create a new easy handle, and add it to the global curl_multi */
-static void new_conn(char *url, GlobalInfo *g)
+static void new_conn(const char *url, GlobalInfo *g)
 {
   ConnInfo *conn;
   CURLMcode rc;
 
   conn = (ConnInfo*)calloc(1, sizeof(ConnInfo));
-  conn->error[0]='\0';
+  conn->error[0] = '\0';
 
   conn->easy = curl_easy_init();
   if(!conn->easy) {
@@ -384,8 +386,8 @@ static void new_conn(char *url, GlobalInfo *g)
   rc = curl_multi_add_handle(g->multi, conn->easy);
   mcode_or_die("new_conn: curl_multi_add_handle", rc);
 
-  /* note that the add_handle() will set a time-out to trigger very soon so
-     that the necessary socket_action() call will be called by this app */
+  /* note that the add_handle() sets a timeout to trigger soon so that the
+   * necessary socket_action() call gets called by this app */
 }
 
 /* This gets called whenever data is received from the fifo */
@@ -503,7 +505,7 @@ int main(int argc, char **argv)
   curl_multi_setopt(g.multi, CURLMOPT_TIMERFUNCTION, multi_timer_cb);
   curl_multi_setopt(g.multi, CURLMOPT_TIMERDATA, &g);
 
-  /* we don't call any curl_multi_socket*() function yet as we have no handles
+  /* we do not call any curl_multi_socket*() function yet as we have no handles
      added! */
 
   fprintf(MSG_OUT, "Entering wait loop\n");

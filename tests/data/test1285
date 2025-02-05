@@ -10,7 +10,7 @@ HTTP Digest auth
 # Server-side
 <reply>
 <data>
-HTTP/1.1 401 authentication please swsbounce
+HTTP/1.1 401 authentication please
 Server: Microsoft-IIS/6.0
 WWW-Authenticate: Digest realm="testrealm", nonce="1053604144"
 Content-Type: text/html; charset=iso-8859-1
@@ -27,7 +27,7 @@ ok
 </data1000>
 
 <datacheck>
-HTTP/1.1 401 authentication please swsbounce
+HTTP/1.1 401 authentication please
 Server: Microsoft-IIS/6.0
 WWW-Authenticate: Digest realm="testrealm", nonce="1053604144"
 Content-Type: text/html; charset=iso-8859-1
@@ -60,9 +60,9 @@ HTTP PUT --digest with user-specified Content-Length header
 # even when there is a user-specified Content-Length header.
 # https://github.com/curl/curl/pull/1242
 <command>
--H "Content-Length: 85" -u auser:apasswd --digest -T log/put%TESTNUMBER http://%HOSTIP:%HTTPPORT/%TESTNUMBER
+-H "Content-Length: 85" -u auser:apasswd --digest -T %LOGDIR/put%TESTNUMBER http://%HOSTIP:%HTTPPORT/%TESTNUMBER
 </command>
-<file name="log/put%TESTNUMBER">
+<file name="%LOGDIR/put%TESTNUMBER">
 This is data we upload with PUT
 a second line
 line three
@@ -85,7 +85,6 @@ Authorization: Digest username="auser", realm="testrealm", nonce="1053604144", u
 User-Agent: curl/%VERSION
 Accept: */*
 Content-Length: 85
-Expect: 100-continue
 
 This is data we upload with PUT
 a second line

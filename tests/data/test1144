@@ -40,17 +40,13 @@ verify
 #
 # Client-side
 <client>
-# hyper doesn't support HTTP/0.9
-<features>
-!hyper
-</features>
 <server>
 http
 </server>
- <name>
+<name>
 HTTP HEAD, receive no headers only body
- </name>
- <command>
+</name>
+<command>
 -I http://%HOSTIP:%HTTPPORT/%TESTNUMBER --http0.9
 </command>
 </client>

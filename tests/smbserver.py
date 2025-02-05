@@ -6,7 +6,7 @@
 #                            | (__| |_| |  _ <| |___
 #                             \___|\___/|_| \_\_____|
 #
-# Copyright (C) 2017 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+# Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
@@ -19,16 +19,20 @@
 # This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
 # KIND, either express or implied.
 #
-"""Server for testing SMB"""
+# SPDX-License-Identifier: curl
+#
+"""Server for testing SMB."""
 
-from __future__ import absolute_import, division, print_function
-# NOTE: the impacket configuration is not unicode_literals compatible!
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import argparse
 import logging
 import os
+import signal
 import sys
 import tempfile
+import threading
 
 # Import our curl test data helper
 from util import ClosingFileHandler, TestData
@@ -40,10 +44,11 @@ else:
 
 # impacket needs to be installed in the Python environment
 try:
-    import impacket
+    import impacket  # noqa: F401
 except ImportError:
-    sys.stderr.write('Python package impacket needs to be installed!\n')
-    sys.stderr.write('Use pip or your package manager to install it.\n')
+    sys.stderr.write(
+        'Warning: Python package impacket is required for smb testing; '
+        'use pip or your package manager to install it\n')
     sys.exit(1)
 from impacket import smb as imp_smb
 from impacket import smbserver as imp_smbserver
@@ -57,10 +62,52 @@ VERIFIED_REQ = "verifiedserver"
 VERIFIED_RSP = "WE ROOLZ: {pid}\n"
 
 
-def smbserver(options):
-    """Start up a TCP SMB server that serves forever
-
+class ShutdownHandler(threading.Thread):
     """
+    Cleanly shut down the SMB server.
+
+    This can only be done from another thread while the server is in
+    serve_forever(), so a thread is spawned here that waits for a shutdown
+    signal before doing its thing. Use in a with statement around the
+    serve_forever() call.
+    """
+
+    def __init__(self, server):
+        super(ShutdownHandler, self).__init__()
+        self.server = server
+        self.shutdown_event = threading.Event()
+
+    def __enter__(self):
+        self.start()
+        signal.signal(signal.SIGINT, self._sighandler)
+        signal.signal(signal.SIGTERM, self._sighandler)
+
+    def __exit__(self, *_):
+        # Call for shutdown just in case it wasn't done already
+        self.shutdown_event.set()
+        # Wait for thread, and therefore also the server, to finish
+        self.join()
+        # Uninstall our signal handlers
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        # Delete any temporary files created by the server during its run
+        log.info("Deleting %d temporary file(s)", len(self.server.tmpfiles))
+        for f in self.server.tmpfiles:
+            os.unlink(f)
+
+    def _sighandler(self, _signum, _frame):
+        # Wake up the cleanup task
+        self.shutdown_event.set()
+
+    def run(self):
+        # Wait for shutdown signal
+        self.shutdown_event.wait()
+        # Notify the server to shut down
+        self.server.shutdown()
+
+
+def smbserver(options):
+    """Start up a TCP SMB server that serves forever."""
     if options.pidfile:
         pid = os.getpid()
         # see tests/server/util.c function write_pidfile
@@ -75,7 +122,7 @@ def smbserver(options):
     smb_config.set("global", "server_name", "SERVICE")
     smb_config.set("global", "server_os", "UNIX")
     smb_config.set("global", "server_domain", "WORKGROUP")
-    smb_config.set("global", "log_file", "")
+    smb_config.set("global", "log_file", "None")
     smb_config.set("global", "credentials_file", "")
 
     # We need a share which allows us to test that the server is running
@@ -94,7 +141,7 @@ def smbserver(options):
     smb_config.set("TESTS", "path", TESTS_MAGIC)
 
     if not options.srcdir or not os.path.isdir(options.srcdir):
-        raise ScriptException("--srcdir is mandatory")
+        raise ScriptError("--srcdir is mandatory")
 
     test_data_dir = os.path.join(options.srcdir, "data")
 
@@ -103,7 +150,12 @@ def smbserver(options):
                                test_data_directory=test_data_dir)
     log.info("[SMB] setting up SMB server on port %s", options.port)
     smb_server.processConfigFile()
-    smb_server.serve_forever()
+
+    # Start a thread that cleanly shuts down the server on a signal
+    with ShutdownHandler(smb_server):
+        # This will block until smb_server.shutdown() is called
+        smb_server.serve_forever()
+
     return 0
 
 
@@ -120,6 +172,7 @@ class TestSmbServer(imp_smbserver.SMBSERVER):
         imp_smbserver.SMBSERVER.__init__(self,
                                          address,
                                          config_parser=config_parser)
+        self.tmpfiles = []
 
         # Set up a test data object so we can get test data later.
         self.ctd = TestData(test_data_directory)
@@ -137,7 +190,7 @@ class TestSmbServer(imp_smbserver.SMBSERVER):
         """
         conn_data = smb_server.getConnectionData(conn_id)
 
-        # Wrap processing in a try block which allows us to throw SmbException
+        # Wrap processing in a try block which allows us to throw SmbError
         # to control the flow.
         try:
             ncax_parms = imp_smb.SMBNtCreateAndX_Parameters(
@@ -153,7 +206,7 @@ class TestSmbServer(imp_smbserver.SMBSERVER):
 
             # Currently we only support reading files.
             if disposition != imp_smb.FILE_OPEN:
-                raise SmbException(STATUS_ACCESS_DENIED,
+                raise SmbError(STATUS_ACCESS_DENIED,
                                    "Only support reading files")
 
             # Check to see if the path we were given is actually a
@@ -177,8 +230,10 @@ class TestSmbServer(imp_smbserver.SMBSERVER):
             if path == SERVER_MAGIC:
                 fid, full_path = self.get_server_path(requested_file)
             else:
-                assert (path == TESTS_MAGIC)
+                assert path == TESTS_MAGIC
                 fid, full_path = self.get_test_path(requested_file)
+
+            self.tmpfiles.append(full_path)
 
             resp_parms = imp_smb.SMBNtCreateAndXResponse_Parameters()
             resp_data = ""
@@ -201,10 +256,11 @@ class TestSmbServer(imp_smbserver.SMBSERVER):
 
             # Get this file's information
             resp_info, error_code = imp_smbserver.queryPathInformation(
-                "", full_path, level=imp_smb.SMB_QUERY_FILE_ALL_INFO)
+                os.path.dirname(full_path), os.path.basename(full_path),
+                level=imp_smb.SMB_QUERY_FILE_ALL_INFO)
 
             if error_code != STATUS_SUCCESS:
-                raise SmbException(error_code, "Failed to query path info")
+                raise SmbError(error_code, "Failed to query path info")
 
             resp_parms["CreateTime"] = resp_info["CreationTime"]
             resp_parms["LastAccessTime"] = resp_info[
@@ -225,8 +281,8 @@ class TestSmbServer(imp_smbserver.SMBSERVER):
             conn_data["OpenedFiles"][fakefid]["FileName"] = path
             conn_data["OpenedFiles"][fakefid]["DeleteOnClose"] = False
 
-        except SmbException as s:
-            log.debug("[SMB] SmbException hit: %s", s)
+        except SmbError as s:
+            log.debug("[SMB] SmbError hit: %s", s)
             error_code = s.error_code
             resp_parms = ""
             resp_data = ""
@@ -250,10 +306,10 @@ class TestSmbServer(imp_smbserver.SMBSERVER):
                 if "path" in conn_shares[tid]:
                     path = conn_shares[tid]["path"]
                 else:
-                    raise SmbException(STATUS_ACCESS_DENIED,
+                    raise SmbError(STATUS_ACCESS_DENIED,
                                        "Connection share had no path")
         else:
-            raise SmbException(imp_smbserver.STATUS_SMB_BAD_TID,
+            raise SmbError(imp_smbserver.STATUS_SMB_BAD_TID,
                                "TID was invalid")
 
         return path
@@ -262,7 +318,7 @@ class TestSmbServer(imp_smbserver.SMBSERVER):
         log.debug("[SMB] Get server path '%s'", requested_filename)
 
         if requested_filename not in [VERIFIED_REQ]:
-            raise SmbException(STATUS_NO_SUCH_FILE, "Couldn't find the file")
+            raise SmbError(STATUS_NO_SUCH_FILE, "Couldn't find the file")
 
         fid, filename = tempfile.mkstemp()
         log.debug("[SMB] Created %s (%d) for storing '%s'",
@@ -303,23 +359,24 @@ class TestSmbServer(imp_smbserver.SMBSERVER):
 
         except Exception:
             log.exception("Failed to make test file")
-            raise SmbException(STATUS_NO_SUCH_FILE, "Failed to make test file")
+            raise SmbError(STATUS_NO_SUCH_FILE, "Failed to make test file")
 
 
-class SmbException(Exception):
+class SmbError(Exception):
     def __init__(self, error_code, error_message):
-        super(SmbException, self).__init__(error_message)
+        super(SmbError, self).__init__(error_message)
         self.error_code = error_code
 
 
 class ScriptRC(object):
-    """Enum for script return codes"""
+    """Enum for script return codes."""
+
     SUCCESS = 0
     FAILURE = 1
     EXCEPTION = 2
 
 
-class ScriptException(Exception):
+class ScriptError(Exception):
     pass
 
 
@@ -345,9 +402,7 @@ def get_options():
 
 
 def setup_logging(options):
-    """
-    Set up logging from the command line options
-    """
+    """Set up logging from the command line options."""
     root_logger = logging.getLogger()
     add_stdout = False
 
@@ -368,7 +423,7 @@ def setup_logging(options):
         root_logger.setLevel(logging.DEBUG)
         add_stdout = True
     else:
-        root_logger.setLevel(logging.INFO)
+        root_logger.setLevel(logging.WARNING)
 
     if add_stdout:
         stdout_handler = logging.StreamHandler(sys.stdout)
@@ -387,8 +442,8 @@ if __name__ == '__main__':
     # Run main script.
     try:
         rc = smbserver(options)
-    except Exception as e:
-        log.exception(e)
+    except Exception:
+        log.exception('Error in SMB server')
         rc = ScriptRC.EXCEPTION
 
     if options.pidfile and os.path.isfile(options.pidfile):

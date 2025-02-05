@@ -26,16 +26,13 @@ muahahaha
 #
 # Client-side
 <client>
-<features>
-!hyper
-</features>
 <server>
 http
 </server>
- <name>
+<name>
 HTTP --ignore-content-length
- </name>
- <command>
+</name>
+<command>
 http://%HOSTIP:%HTTPPORT/%TESTNUMBER --ignore-content-length
 </command>
 </client>

@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -18,10 +18,15 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
 #include "curlcheck.h"
 
-#include "curl/mprintf.h"
+#if defined(CURL_GNUC_DIAG) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
+#endif
 
 static CURLcode unit_setup(void) {return CURLE_OK;}
 static void unit_stop(void) {}
@@ -32,7 +37,7 @@ int rc;
 char buf[3] = {'b', 'u', 'g'};
 const char *str = "bug";
 int width = 3;
-char output[24];
+char output[130];
 
 /*#define curl_msnprintf snprintf */
 
@@ -87,4 +92,100 @@ rc = curl_msnprintf(output, 16, "%8d%8d", 1234, 5678);
 fail_unless(rc == 15, "return code should be 15");
 fail_unless(!strcmp(output, "    1234    567"), "wrong output");
 
+/* double precision */
+rc = curl_msnprintf(output, 24, "%2$.*1$.99d", 3, 5678);
+fail_unless(rc == 0, "return code should be 0");
+
+/* 129 input % flags */
+rc = curl_msnprintf(output, 130,
+                    "%s%s%s%s%s%s%s%s%s%s" /* 10 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 20 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 30 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 40 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 50 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 60 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 70 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 80 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 90 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 100 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 110 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 120 */
+                    "%s%s%s%s%s%s%s%s%s", /* 129 */
+
+                    "a", "", "", "", "", "", "", "", "", "", /* 10 */
+                    "b", "", "", "", "", "", "", "", "", "", /* 20 */
+                    "c", "", "", "", "", "", "", "", "", "", /* 30 */
+                    "d", "", "", "", "", "", "", "", "", "", /* 40 */
+                    "e", "", "", "", "", "", "", "", "", "", /* 50 */
+                    "f", "", "", "", "", "", "", "", "", "", /* 60 */
+                    "g", "", "", "", "", "", "", "", "", "", /* 70 */
+                    "h", "", "", "", "", "", "", "", "", "", /* 80 */
+                    "i", "", "", "", "", "", "", "", "", "", /* 90 */
+                    "j", "", "", "", "", "", "", "", "", "", /* 100 */
+                    "k", "", "", "", "", "", "", "", "", "", /* 110 */
+                    "l", "", "", "", "", "", "", "", "", "", /* 120 */
+                    "m", "", "", "", "", "", "", "", ""  /* 129 */
+  );
+fail_unless(rc == 0, "return code should be 0");
+
+/* 128 input % flags */
+rc = curl_msnprintf(output, 130,
+                    "%s%s%s%s%s%s%s%s%s%s" /* 10 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 20 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 30 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 40 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 50 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 60 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 70 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 80 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 90 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 100 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 110 */
+                    "%s%s%s%s%s%s%s%s%s%s" /* 120 */
+                    "%s%s%s%s%s%s%s%s", /* 128 */
+
+                    "a", "", "", "", "", "", "", "", "", "", /* 10 */
+                    "b", "", "", "", "", "", "", "", "", "", /* 20 */
+                    "c", "", "", "", "", "", "", "", "", "", /* 30 */
+                    "d", "", "", "", "", "", "", "", "", "", /* 40 */
+                    "e", "", "", "", "", "", "", "", "", "", /* 50 */
+                    "f", "", "", "", "", "", "", "", "", "", /* 60 */
+                    "g", "", "", "", "", "", "", "", "", "", /* 70 */
+                    "h", "", "", "", "", "", "", "", "", "", /* 80 */
+                    "i", "", "", "", "", "", "", "", "", "", /* 90 */
+                    "j", "", "", "", "", "", "", "", "", "", /* 100 */
+                    "k", "", "", "", "", "", "", "", "", "", /* 110 */
+                    "l", "", "", "", "", "", "", "", "", "", /* 120 */
+                    "m", "", "", "", "", "", "", ""  /* 128 */
+  );
+fail_unless(rc == 13, "return code should be 13");
+
+/* 129 output segments */
+rc = curl_msnprintf(output, 130,
+                    "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" /* 20 */
+                    "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" /* 40 */
+                    "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" /* 60 */
+                    "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" /* 80 */
+                    "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" /* 100 */
+                    "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" /* 120 */
+                    "%%%%%%%%%%%%%%%%%%" /* 129 */
+  );
+fail_unless(rc == 0, "return code should be 0");
+
+/* 128 output segments */
+rc = curl_msnprintf(output, 129,
+                    "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" /* 20 */
+                    "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" /* 40 */
+                    "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" /* 60 */
+                    "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" /* 80 */
+                    "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" /* 100 */
+                    "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" /* 120 */
+                    "%%%%%%%%%%%%%%%%" /* 128 */
+  );
+fail_unless(rc == 128, "return code should be 128");
+
 UNITTEST_STOP
+
+#if defined(CURL_GNUC_DIAG) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif

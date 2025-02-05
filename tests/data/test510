@@ -31,10 +31,10 @@ http
 lib%TESTNUMBER
 </tool>
 
- <name>
+<name>
 send HTTP POST using read callback, using chunked transfer-encoding
- </name>
- <command>
+</name>
+<command>
 http://%HOSTIP:%HTTPPORT/%TESTNUMBER
 </command>
 </client>
@@ -56,11 +56,7 @@ one
 two
 5
 three
-%if hyper
-1D
-%else
 1d
-%endif
 and a final longer crap: four
 0
 

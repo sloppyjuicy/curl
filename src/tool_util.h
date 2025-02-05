@@ -7,7 +7,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -20,10 +20,21 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
 #include "tool_setup.h"
 
+/**
+ * Return timeval of the MONOTONIC timer, depending on platform
+ * this may be completely unrelated to the REALTIME.
+ */
 struct timeval tvnow(void);
+
+/**
+ * Return timeval of the REALTIME clock.
+ */
+struct timeval tvrealnow(void);
 
 /*
  * Make sure that the first argument (t1) is the more recent time and t2 is
@@ -32,5 +43,13 @@ struct timeval tvnow(void);
  * Returns: the time difference in number of milliseconds.
  */
 long tvdiff(struct timeval t1, struct timeval t2);
+
+/* Case insensitive comparison support. */
+int struplocompare(const char *p1, const char *p2);
+int struplocompare4sort(const void *p1, const void *p2);
+
+#ifdef _WIN32
+FILE *Curl_execpath(const char *filename, char **pathp);
+#endif
 
 #endif /* HEADER_CURL_TOOL_UTIL_H */

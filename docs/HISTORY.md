@@ -1,3 +1,9 @@
+<!--
+Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+
+SPDX-License-Identifier: curl
+-->
+
 How curl Became Like This
 =========================
 
@@ -24,9 +30,9 @@ new maintainer of the project.
 HttpGet 0.3 was released in January 1997 and now it accepted HTTP URLs on the
 command line.
 
-HttpGet 1.0 was released on April 8th 1997 with brand new HTTP proxy support.
+HttpGet 1.0 was released on April 8 1997 with brand new HTTP proxy support.
 
-We soon found and fixed support for getting currencies over GOPHER.  Once FTP
+We soon found and fixed support for getting currencies over GOPHER. Once FTP
 download support was added, the name of the project was changed and urlget 2.0
 was released in August 1997. The http-only days were already passed.
 
@@ -60,7 +66,7 @@ SSL support was added, powered by the SSLeay library.
 August: first announcement of curl on freshmeat.net.
 
 October: with the curl 4.9 release and the introduction of cookie support,
-curl was no longer released under the GPL license. Now we're at 4000 lines of
+curl was no longer released under the GPL license. Now we are at 4000 lines of
 code, we switched over to the MPL license to restrict the effects of
 "copyleft".
 
@@ -68,7 +74,7 @@ November: configure script and reported successful compiles on several
 major operating systems. The never-quite-understood -F option was added and
 curl could now simulate quite a lot of a browser. TELNET support was added.
 
-Curl 5 was released in December 1998 and introduced the first ever curl man
+curl 5 was released in December 1998 and introduced the first ever curl man
 page. People started making Linux RPM packages out of it.
 
 1999
@@ -130,7 +136,7 @@ August: The curl website gets 8000 visits weekly. Curl Corporation contacted
 Daniel to discuss "the name issue". After Daniel's reply, they have never
 since got back in touch again.
 
-September: libcurl 7.9 introduces cookie jar and curl_formadd(). During the
+September: libcurl 7.9 introduces cookie jar and `curl_formadd()`. During the
 forthcoming 7.9.x releases, we introduced the multi interface slowly and
 without many whistles.
 
@@ -145,7 +151,7 @@ June: the curl website gets 13000 visits weekly. curl and libcurl is
 35000 lines of code. Reported successful compiles on more than 40 combinations
 of CPUs and operating systems.
 
-To estimate number of users of the curl tool or libcurl library is next to
+To estimate the number of users of the curl tool or libcurl library is next to
 impossible. Around 5000 downloaded packages each week from the main site gives
 a hint, but the packages are mirrored extensively, bundled with numerous OS
 distributions and otherwise retrieved as part of other software.
@@ -161,7 +167,7 @@ Starting with 7.10, curl verifies SSL server certificates by default.
 January: Started working on the distributed curl tests. The autobuilds.
 
 February: the curl site averages at 20000 visits weekly. At any given moment,
-there's an average of 3 people browsing the website.
+there is an average of 3 people browsing the website.
 
 Multiple new authentication schemes are supported: Digest (May), NTLM (June)
 and Negotiate (June).
@@ -179,16 +185,16 @@ January: curl 7.11.0 introduced large file support.
 June: curl 7.12.0 introduced IDN support. 10 official web mirrors.
 
 This release bumped the major SONAME to 3 due to the removal of the
-curl_formparse() function
+`curl_formparse()` function
 
-August: Curl and libcurl 7.12.1
+August: curl and libcurl 7.12.1
 
     Public curl release number:                82
-    Releases counted from the very beginning: 109
+    Releases counted from the beginning:      109
     Available command line options:            96
     Available curl_easy_setopt() options:     120
     Number of public functions in libcurl:     36
-    Amount of public website mirrors:         12
+    Amount of public website mirrors:          12
     Number of known libcurl bindings:          26
 
 2005
@@ -280,7 +286,7 @@ August:
 
 February: added support for the axTLS backend
 
-April: added the cyassl backend (later renamed to WolfSSL)
+April: added the cyassl backend (later renamed to wolfSSL)
 
 2012
 ----
@@ -288,7 +294,7 @@ April: added the cyassl backend (later renamed to WolfSSL)
  July: Added support for Schannel (native Windows TLS backend) and Darwin SSL
  (Native Mac OS X and iOS TLS backend).
 
- Supports metalink
+ Supports Metalink
 
  October: SSH-agent support.
 
@@ -327,7 +333,7 @@ April: added the cyassl backend (later renamed to WolfSSL)
 
  January: the curl tool defaults to HTTP/2 for HTTPS URLs
 
- December: curl 7.52.0 introduced support for HTTPS-proxy!
+ December: curl 7.52.0 introduced support for HTTPS-proxy
 
  First TLS 1.3 support
 
@@ -336,7 +342,7 @@ April: added the cyassl backend (later renamed to WolfSSL)
 
  July: OSS-Fuzz started fuzzing libcurl
 
- September: Added Multi-SSL support
+ September: Added MultiSSL support
 
  The website serves 3100 GB/month
 
@@ -371,7 +377,7 @@ April: added the cyassl backend (later renamed to WolfSSL)
  curl and libcurl are installed in an estimated 5 *billion* instances
  world-wide.
 
- October 31: Curl and libcurl 7.62.0
+ October 31: curl and libcurl 7.62.0
 
     Public curl releases:         177
     Command line options:         219
@@ -406,9 +412,59 @@ April: added the cyassl backend (later renamed to WolfSSL)
 
  November: the website moves to curl.se. The website serves 10TB data monthly.
 
+ December: alt-svc support
+
 2021
 ----
 
- February 3: curl 7.75.0 ships with support for Hyper is a HTTP backend
+ February 3: curl 7.75.0 ships with support for Hyper as an HTTP backend
 
- March 31: curl 7.76.0 ships with support for rustls
+ March 31: curl 7.76.0 ships with support for Rustls
+
+ July: HSTS is supported
+
+2022
+----
+
+March: added --json, removed mesalink support
+
+    Public curl releases:         206
+    Command line options:         245
+    curl_easy_setopt() options:   295
+    Public functions in libcurl:  86
+    Contributors:                 2601
+
+ The curl.se website serves 16,500 GB/month over 462M requests, the
+ official docker image has been pulled 4,098,015,431 times.
+
+October: initial WebSocket support
+
+2023
+----
+
+March: remove support for curl_off_t < 8 bytes
+
+March 31: we started working on a new command line tool for URL parsing and
+manipulations: trurl.
+
+May: added support for HTTP/2 over HTTPS proxy. Refuse to resolve .onion.
+
+August: Dropped support for the NSS library
+
+September: added "variable" support in the command line tool. Dropped support
+for the gskit TLS library.
+
+October: added support for IPFS via HTTP gateway
+
+December: HTTP/3 support with ngtcp2 is no longer experimental
+
+2024
+----
+
+January: switched to "curldown" for all documentation
+
+April 24: the curl container has been pulled more than six billion times
+
+May: experimental support for ECH
+
+August 9: we adopted the wcurl tool into the curl organization

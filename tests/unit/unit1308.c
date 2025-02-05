@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -17,6 +17,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 #include "curlcheck.h"
@@ -41,55 +43,67 @@ static size_t print_httppost_callback(void *arg, const char *buf, size_t len)
 }
 
 UNITTEST_START
-  int rc;
+  CURLFORMcode rc;
+  int res;
   struct curl_httppost *post = NULL;
   struct curl_httppost *last = NULL;
   size_t total_size = 0;
   char buffer[] = "test buffer";
 
-  rc = curl_formadd(&post, &last, CURLFORM_COPYNAME, "name",
-                    CURLFORM_COPYCONTENTS, "content", CURLFORM_END);
-
+  CURL_IGNORE_DEPRECATION(
+    rc = curl_formadd(&post, &last, CURLFORM_COPYNAME, "name",
+                      CURLFORM_COPYCONTENTS, "content", CURLFORM_END);
+  )
   fail_unless(rc == 0, "curl_formadd returned error");
 
   /* after the first curl_formadd when there's a single entry, both pointers
      should point to the same struct */
   fail_unless(post == last, "post and last weren't the same");
 
-  rc = curl_formadd(&post, &last, CURLFORM_COPYNAME, "htmlcode",
-                    CURLFORM_COPYCONTENTS, "<HTML></HTML>",
-                    CURLFORM_CONTENTTYPE, "text/html", CURLFORM_END);
-
+  CURL_IGNORE_DEPRECATION(
+    rc = curl_formadd(&post, &last, CURLFORM_COPYNAME, "htmlcode",
+                      CURLFORM_COPYCONTENTS, "<HTML></HTML>",
+                      CURLFORM_CONTENTTYPE, "text/html", CURLFORM_END);
+  )
   fail_unless(rc == 0, "curl_formadd returned error");
 
-  rc = curl_formadd(&post, &last, CURLFORM_COPYNAME, "name_for_ptrcontent",
-                   CURLFORM_PTRCONTENTS, buffer, CURLFORM_END);
-
+  CURL_IGNORE_DEPRECATION(
+    rc = curl_formadd(&post, &last, CURLFORM_COPYNAME, "name_for_ptrcontent",
+                     CURLFORM_PTRCONTENTS, buffer, CURLFORM_END);
+  )
   fail_unless(rc == 0, "curl_formadd returned error");
 
-  rc = curl_formget(post, &total_size, print_httppost_callback);
+  CURL_IGNORE_DEPRECATION(
+    res = curl_formget(post, &total_size, print_httppost_callback);
+  )
+  fail_unless(res == 0, "curl_formget returned error");
 
-  fail_unless(rc == 0, "curl_formget returned error");
+  fail_unless(total_size == 518, "curl_formget got wrong size back");
 
-  fail_unless(total_size == 488, "curl_formget got wrong size back");
-
-  curl_formfree(post);
+  CURL_IGNORE_DEPRECATION(
+    curl_formfree(post);
+  )
 
   /* start a new formpost with a file upload and formget */
   post = last = NULL;
 
-  rc = curl_formadd(&post, &last,
-                    CURLFORM_PTRNAME, "name of file field",
-                    CURLFORM_FILE, "log/test-1308",
-                    CURLFORM_FILENAME, "custom named file",
-                    CURLFORM_END);
-
+  CURL_IGNORE_DEPRECATION(
+    rc = curl_formadd(&post, &last,
+                      CURLFORM_PTRNAME, "name of file field",
+                      CURLFORM_FILE, arg,
+                      CURLFORM_FILENAME, "custom named file",
+                      CURLFORM_END);
+  )
   fail_unless(rc == 0, "curl_formadd returned error");
 
-  rc = curl_formget(post, &total_size, print_httppost_callback);
-  fail_unless(rc == 0, "curl_formget returned error");
-  fail_unless(total_size == 851, "curl_formget got wrong size back");
+  CURL_IGNORE_DEPRECATION(
+    res = curl_formget(post, &total_size, print_httppost_callback);
+  )
+  fail_unless(res == 0, "curl_formget returned error");
+  fail_unless(total_size == 899, "curl_formget got wrong size back");
 
-  curl_formfree(post);
+  CURL_IGNORE_DEPRECATION(
+    curl_formfree(post);
+  )
 
 UNITTEST_STOP

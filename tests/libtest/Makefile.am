@@ -5,7 +5,7 @@
 #                            | (__| |_| |  _ <| |___
 #                             \___|\___/|_| \_\_____|
 #
-# Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
+# Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
@@ -18,6 +18,8 @@
 # This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
 # KIND, either express or implied.
 #
+# SPDX-License-Identifier: curl
+#
 ###########################################################################
 AUTOMAKE_OPTIONS = foreign nostdinc
 
@@ -29,23 +31,15 @@ AUTOMAKE_OPTIONS = foreign nostdinc
 # $(top_srcdir)/include is for libcurl's external include files
 # $(top_builddir)/lib is for libcurl's generated lib/curl_config.h file
 # $(top_srcdir)/lib for libcurl's lib/curl_setup.h and other "borrowed" files
-# $(top_builddir)/ares is for in-tree c-ares's generated ares_build.h file
-# $(top_srcdir)/ares is for in-tree c-ares's external include files
 
-if USE_EMBEDDED_ARES
 AM_CPPFLAGS = -I$(top_srcdir)/include        \
               -I$(top_builddir)/lib          \
               -I$(top_srcdir)/lib            \
-              -I$(top_builddir)/ares         \
-              -I$(top_srcdir)/ares
-else
-AM_CPPFLAGS = -I$(top_srcdir)/include        \
-              -I$(top_builddir)/lib          \
-              -I$(top_srcdir)/lib
-endif
+              -I$(top_srcdir)/src            \
+              -I$(top_srcdir)/tests/libtest
 
 EXTRA_DIST = test307.pl test610.pl test613.pl test1013.pl test1022.pl   \
-  Makefile.inc notexists.pl CMakeLists.txt mk-lib1521.pl .checksrc
+  CMakeLists.txt mk-lib1521.pl .checksrc
 
 CFLAG_CURL_SYMBOL_HIDING = @CFLAG_CURL_SYMBOL_HIDING@
 
@@ -56,29 +50,17 @@ CLEANFILES = lib1521.c
 # Prevent LIBS from being used for all link targets
 LIBS = $(BLANK_AT_MAKETIME)
 
-if USE_EXPLICIT_LIB_DEPS
-SUPPORTFILES_LIBS = $(top_builddir)/lib/libcurl.la @LIBCURL_LIBS@
-TESTUTIL_LIBS = $(top_builddir)/lib/libcurl.la @LIBCURL_LIBS@
-else
-SUPPORTFILES_LIBS = $(top_builddir)/lib/libcurl.la @CURL_NETWORK_LIBS@ @NSS_LIBS@
-TESTUTIL_LIBS = $(top_builddir)/lib/libcurl.la @CURL_NETWORK_AND_TIME_LIBS@ @NSS_LIBS@
-endif
+SUPPORTFILES_LIBS = $(top_builddir)/lib/libcurl.la @LIBCURL_PC_LIBS_PRIVATE@
+TESTUTIL_LIBS = $(top_builddir)/lib/libcurl.la @LIBCURL_PC_LIBS_PRIVATE@
 
 # Dependencies (may need to be overridden)
 LDADD = $(SUPPORTFILES_LIBS)
 
 # Makefile.inc provides the source defines (TESTUTIL, SUPPORTFILES,
-# noinst_PROGRAMS, lib*_SOURCES, and lib*_CFLAGS)
+# LIBTESTPROGS, lib*_SOURCES, and lib*_CFLAGS)
 include Makefile.inc
 
-# Preloading of libhostname allows host name overriding,
-# this is used to make some tests machine independent.
-
-if BUILD_LIBHOSTNAME
-noinst_LTLIBRARIES = libhostname.la
-else
 noinst_LTLIBRARIES =
-endif
 
 if USE_CPPFLAG_CURL_STATICLIB
 AM_CPPFLAGS += -DCURL_STATICLIB
@@ -87,34 +69,11 @@ endif
 AM_LDFLAGS =
 AM_CFLAGS =
 
-libhostname_la_CPPFLAGS_EXTRA =
-libhostname_la_LDFLAGS_EXTRA = -module -avoid-version -rpath /nowhere
-libhostname_la_CFLAGS_EXTRA =
-
 libstubgss_la_LDFLAGS_EXTRA =
 
 if CURL_LT_SHLIB_USE_NO_UNDEFINED
-libhostname_la_LDFLAGS_EXTRA += -no-undefined
 libstubgss_la_LDFLAGS_EXTRA += -no-undefined
 endif
-
-if CURL_LT_SHLIB_USE_MIMPURE_TEXT
-libhostname_la_LDFLAGS_EXTRA += -mimpure-text
-endif
-
-if DOING_CURL_SYMBOL_HIDING
-libhostname_la_CPPFLAGS_EXTRA += -DCURL_HIDDEN_SYMBOLS
-libhostname_la_CFLAGS_EXTRA += $(CFLAG_CURL_SYMBOL_HIDING)
-endif
-
-libhostname_la_CPPFLAGS = $(AM_CPPFLAGS) $(libhostname_la_CPPFLAGS_EXTRA)
-libhostname_la_LDFLAGS = $(AM_LDFLAGS) $(libhostname_la_LDFLAGS_EXTRA)
-libhostname_la_CFLAGS = $(AM_CFLAGS) $(libhostname_la_CFLAGS_EXTRA)
-
-libhostname_la_SOURCES = sethostname.c sethostname.h
-
-libhostname_la_LIBADD =
-libhostname_la_DEPENDENCIES =
 
 # Build a stub gssapi implementation for testing
 if BUILD_STUB_GSS
@@ -130,19 +89,42 @@ libstubgss_la_LIBADD =
 libstubgss_la_DEPENDENCIES =
 endif
 
+if USE_TEST_BUNDLES
+AM_CPPFLAGS += -DCURL_NO_GETADDRINFO_OVERRIDE
+
+libtest_bundle.c: $(top_srcdir)/tests/mk-bundle.pl lib1521.c
+	@PERL@ $(top_srcdir)/tests/mk-bundle.pl $(srcdir) > libtest_bundle.c
+
+noinst_PROGRAMS = libtests
+nodist_libtests_SOURCES = libtest_bundle.c
+libtests_SOURCES = $(TESTUTIL) $(TSTTRACE)
+libtests_LDADD = $(TESTUTIL_LIBS)
+CLEANFILES += libtest_bundle.c
+
+if USE_CPPFLAG_CURL_STATICLIB
+else
+# These are part of the libcurl static lib. Add them here when linking shared.
+libtests_SOURCES += $(WARNLESS) $(MULTIBYTE) $(INET_PTON) $(TIMEDIFF) $(THREADS)
+endif
+else
+noinst_PROGRAMS = $(LIBTESTPROGS)
+endif
 
 lib1521.c: $(top_srcdir)/tests/libtest/mk-lib1521.pl $(top_srcdir)/include/curl/curl.h
-	@PERL@ $(top_srcdir)/tests/libtest/mk-lib1521.pl < $(top_srcdir)/include/curl/curl.h > lib1521.c
+	@PERL@ $(top_srcdir)/tests/libtest/mk-lib1521.pl < $(top_srcdir)/include/curl/curl.h lib1521.c
 
 CHECKSRC = $(CS_$(V))
 CS_0 = @echo "  RUN     " $@;
 CS_1 =
 CS_ = $(CS_0)
 
+# ignore generated C files since they play by slightly different rules!
 checksrc:
-	$(CHECKSRC)@PERL@ $(top_srcdir)/lib/checksrc.pl -D$(srcdir) $(srcdir)/*.[ch]
+	$(CHECKSRC)(@PERL@ $(top_srcdir)/scripts/checksrc.pl -D$(srcdir) \
+	  -W$(srcdir)/libtest_bundle.c \
+	  $(srcdir)/*.[ch])
 
-if CURLDEBUG
+if DEBUGBUILD
 # for debug builds, we scan the sources on all regular make invokes
 all-local: checksrc
 endif

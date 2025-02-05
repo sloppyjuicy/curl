@@ -44,13 +44,16 @@ Content-Length: 0
 <server>
 http
 </server>
- <name>
+<killserver>
+http
+</killserver>
+<name>
 -f and resume transfer of an entirely-downloaded file
- </name>
- <command>
+</name>
+<command>
 http://%HOSTIP:%HTTPPORT/%TESTNUMBER -C - -f
 </command>
-<file name="log/curl%TESTNUMBER.out">
+<file name="%LOGDIR/curl%TESTNUMBER.out">
 012345678
 012345678
 012345678

@@ -19,17 +19,13 @@ swsclose
 #
 # Client-side
 <client>
-# hyper doesn't grok HTTP/0.9
-<features>
-!hyper
-</features>
 <server>
 http
 </server>
- <name>
+<name>
 HTTP GET with a single-byte HTTP/0.9 response
- </name>
- <command>
+</name>
+<command>
 http://%HOSTIP:%HTTPPORT/%TESTNUMBER --http0.9
 </command>
 </client>

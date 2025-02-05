@@ -7,7 +7,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -20,20 +20,26 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
 
 #include "curl_setup.h"
 
-#if defined(HAVE_LIBSSH2_H)
+#if defined(USE_LIBSSH2)
 #include <libssh2.h>
 #include <libssh2_sftp.h>
-#elif defined(HAVE_LIBSSH_LIBSSH_H)
+#elif defined(USE_LIBSSH)
+/* in 0.10.0 or later, ignore deprecated warnings */
+#define SSH_SUPPRESS_DEPRECATED
 #include <libssh/libssh.h>
 #include <libssh/sftp.h>
 #elif defined(USE_WOLFSSH)
 #include <wolfssh/ssh.h>
 #include <wolfssh/wolfsftp.h>
 #endif
+
+#include "curl_path.h"
 
 /****************************************************************************
  * SSH unique setup
@@ -105,6 +111,8 @@ typedef enum {
   SSH_LAST  /* never used */
 } sshstate;
 
+#define CURL_PATH_MAX 1024
+
 /* this struct is used in the HandleData struct which is part of the
    Curl_easy, which means this is used on a per-easy handle basis.
    Everything that is strictly related to a connection is banned from this
@@ -114,8 +122,8 @@ struct SSHPROTO {
 #ifdef USE_LIBSSH2
   struct dynbuf readdir_link;
   struct dynbuf readdir;
-  char *readdir_filename;
-  char *readdir_longentry;
+  char readdir_filename[CURL_PATH_MAX + 1];
+  char readdir_longentry[CURL_PATH_MAX + 1];
 
   LIBSSH2_SFTP_ATTRIBUTES quote_attrs; /* used by the SFTP_QUOTE state */
 
@@ -131,8 +139,8 @@ struct ssh_conn {
 
   /* common */
   const char *passphrase;     /* pass-phrase to use */
-  char *rsa_pub;              /* path name */
-  char *rsa;                  /* path name */
+  char *rsa_pub;              /* strdup'ed public key file */
+  char *rsa;                  /* strdup'ed private key file */
   bool authed;                /* the connection has been authenticated fine */
   bool acceptfail;            /* used by the SFTP_QUOTE (continue if
                                  quote command fails) */
@@ -145,7 +153,6 @@ struct ssh_conn {
 
   char *homedir;              /* when doing SFTP we figure out home dir in the
                                  connect phase */
-  char *readdir_line;
   /* end of READDIR stuff */
 
   int secondCreateDirs;         /* counter use by the code to see if the
@@ -156,12 +163,13 @@ struct ssh_conn {
 
 #if defined(USE_LIBSSH)
   char *readdir_linkPath;
-  size_t readdir_len, readdir_totalLen, readdir_currLen;
+  size_t readdir_len;
+  struct dynbuf readdir_buf;
 /* our variables */
   unsigned kbd_state; /* 0 or 1 */
   ssh_key privkey;
   ssh_key pubkey;
-  int auth_methods;
+  unsigned int auth_methods;
   ssh_session ssh_session;
   ssh_scp scp_session;
   sftp_session sftp_session;
@@ -169,6 +177,10 @@ struct ssh_conn {
   sftp_dir sftp_dir;
 
   unsigned sftp_recv_state; /* 0 or 1 */
+#if LIBSSH_VERSION_INT > SSH_VERSION_INT(0, 11, 0)
+  sftp_aio sftp_aio;
+  unsigned sftp_send_state; /* 0 or 1 */
+#endif
   int sftp_file_index; /* for async read */
   sftp_attributes readdir_attrs; /* used by the SFTP readdir actions */
   sftp_attributes readdir_link_attrs; /* used by the SFTP readdir actions */
@@ -209,11 +221,7 @@ struct ssh_conn {
 #endif /* USE_LIBSSH */
 };
 
-#if defined(USE_LIBSSH)
-
-#define CURL_LIBSSH_VERSION ssh_version(0)
-
-#elif defined(USE_LIBSSH2)
+#if defined(USE_LIBSSH2)
 
 /* Feature detection based on version numbers to better work with
    non-configure platforms */
@@ -245,10 +253,10 @@ struct ssh_conn {
 #endif
 
 #ifdef HAVE_LIBSSH2_VERSION
-/* get it run-time if possible */
+/* get it runtime if possible */
 #define CURL_LIBSSH2_VERSION libssh2_version(0)
 #else
-/* use build-time if run-time not possible */
+/* use build-time if runtime not possible */
 #define CURL_LIBSSH2_VERSION LIBSSH2_VERSION
 #endif
 
@@ -269,6 +277,7 @@ void Curl_ssh_attach(struct Curl_easy *data,
 /* for non-SSH builds */
 #define Curl_ssh_cleanup()
 #define Curl_ssh_attach(x,y)
+#define Curl_ssh_init() 0
 #endif
 
 #endif /* HEADER_CURL_SSH_H */

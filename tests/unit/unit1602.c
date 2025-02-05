@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -18,10 +18,11 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
 #include "curlcheck.h"
 
-#define ENABLE_CURLX_PRINTF
 #include "curlx.h"
 
 #include "hash.h"
@@ -38,8 +39,9 @@ static void mydtor(void *p)
 
 static CURLcode unit_setup(void)
 {
-  return Curl_hash_init(&hash_static, 7, Curl_hash_str,
-                        Curl_str_key_compare, mydtor);
+  Curl_hash_init(&hash_static, 7, Curl_hash_str,
+                 Curl_str_key_compare, mydtor);
+  return CURLE_OK;
 }
 
 static void unit_stop(void)

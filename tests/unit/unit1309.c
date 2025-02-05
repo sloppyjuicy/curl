@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -17,6 +17,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 #include "curlcheck.h"
@@ -44,7 +46,7 @@ static void splayprint(struct Curl_tree *t, int d, char output)
     return;
 
   splayprint(t->larger, d + 1, output);
-  for(i = 0; i<d; i++)
+  for(i = 0; i < d; i++)
     if(output)
       printf("  ");
 
@@ -86,7 +88,7 @@ UNITTEST_START
     key.tv_sec = 0;
     key.tv_usec = (541*i)%1023;
     storage[i] = key.tv_usec;
-    nodes[i].payload = &storage[i];
+    Curl_splayset(&nodes[i], &storage[i]);
     root = Curl_splayinsert(key, root, &nodes[i]);
   }
 
@@ -98,7 +100,7 @@ UNITTEST_START
     printf("Tree look:\n");
     splayprint(root, 0, 1);
     printf("remove pointer %d, payload %zu\n", rem,
-           *(size_t *)nodes[rem].payload);
+           *(size_t *)Curl_splayget(&nodes[rem]));
     rc = Curl_splayremove(root, &nodes[rem], &root);
     if(rc) {
       /* failed! */
@@ -119,7 +121,7 @@ UNITTEST_START
     /* add some nodes with the same key */
     for(j = 0; j <= i % 3; j++) {
       storage[i * 3 + j] = key.tv_usec*10 + j;
-      nodes[i * 3 + j].payload = &storage[i * 3 + j];
+      Curl_splayset(&nodes[i * 3 + j], &storage[i * 3 + j]);
       root = Curl_splayinsert(key, root, &nodes[i * 3 + j]);
     }
   }
@@ -129,10 +131,10 @@ UNITTEST_START
     printf("Removing nodes not larger than %d\n", i);
     tv_now.tv_usec = i;
     root = Curl_splaygetbest(tv_now, root, &removed);
-    while(removed != NULL) {
+    while(removed) {
       printf("removed payload %zu[%zu]\n",
-             (*(size_t *)removed->payload) / 10,
-             (*(size_t *)removed->payload) % 10);
+             *(size_t *)Curl_splayget(removed) / 10,
+             *(size_t *)Curl_splayget(removed) % 10);
       root = Curl_splaygetbest(tv_now, root, &removed);
     }
   }

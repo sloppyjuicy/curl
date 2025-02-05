@@ -82,11 +82,9 @@ User-Agent: curl/%VERSION
 Accept: */*
 
 </protocol>
-<file name="log/stderr%TESTNUMBER" mode="text">
-%if !hyper
+<file name="%LOGDIR/stderr%TESTNUMBER" mode="text">
 * Ignoring Content-Length in CONNECT 200 response
 * Ignoring Transfer-Encoding in CONNECT 200 response
-%endif
 </file>
 <stripfile>
 s/^.*(?=\* Ignoring (?:Content-Length|Transfer-Encoding) )// or $_ = ''

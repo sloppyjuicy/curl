@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -17,6 +17,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 
@@ -79,7 +81,7 @@ const psl_ctx_t *Curl_psl_use(struct Curl_easy *easy)
       psl = psl_latest(NULL);
       dynamic = psl != NULL;
       /* Take care of possible time computation overflow. */
-      expires = now < TIME_T_MAX - PSL_TTL? now + PSL_TTL: TIME_T_MAX;
+      expires = now < TIME_T_MAX - PSL_TTL ? now + PSL_TTL : TIME_T_MAX;
 
       /* Only get the built-in PSL if we do not already have the "latest". */
       if(!psl && !pslcache->dynamic)

@@ -38,8 +38,8 @@ Contents of that page you requested, sir.
 </data1000>
 
 <datacheck>
-APPLICATION: received a CURLIOCMD_RESTARTREAD request
-APPLICATION: ** REWINDING! **
+APPLICATION received a CURLIOCMD_RESTARTREAD request
+APPLICATION ** REWINDING! **
 Contents of that page you requested, sir.
 </datacheck>
 </reply>
@@ -58,10 +58,10 @@ lib%TESTNUMBER
 crypto
 proxy
 </features>
- <name>
+<name>
 HTTP proxy auth Digest with 70K POST data from read callback
- </name>
- <command>
+</name>
+<command>
 http://test.remote.example.com/path/%TESTNUMBER http://s1lly:pers0n@%HOSTIP:%HTTPPORT/
 </command>
 </client>

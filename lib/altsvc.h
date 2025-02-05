@@ -7,7 +7,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 2019 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -20,19 +20,14 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
 #include "curl_setup.h"
 
 #if !defined(CURL_DISABLE_HTTP) && !defined(CURL_DISABLE_ALTSVC)
 #include <curl/curl.h>
 #include "llist.h"
-
-enum alpnid {
-  ALPN_none = 0,
-  ALPN_h1 = CURLALTSVC_H1,
-  ALPN_h2 = CURLALTSVC_H2,
-  ALPN_h3 = CURLALTSVC_H3
-};
 
 struct althost {
   char *host;
@@ -45,8 +40,8 @@ struct altsvc {
   struct althost dst;
   time_t expires;
   bool persist;
-  int prio;
-  struct Curl_llist_element node;
+  unsigned int prio;
+  struct Curl_llist_node node;
 };
 
 struct altsvcinfo {

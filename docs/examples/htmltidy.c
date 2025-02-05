@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -17,6 +17,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 /* <DESC>
@@ -54,17 +56,17 @@ void dumpNode(TidyDoc doc, TidyNode tnod, int indent)
       /* walk the attribute list */
       for(attr = tidyAttrFirst(child); attr; attr = tidyAttrNext(attr) ) {
         printf("%s", tidyAttrName(attr));
-        tidyAttrValue(attr)?printf("=\"%s\" ",
-                                   tidyAttrValue(attr)):printf(" ");
+        tidyAttrValue(attr) ? printf("=\"%s\" ",
+                                     tidyAttrValue(attr)) : printf(" ");
       }
       printf(">\n");
     }
     else {
-      /* if it doesn't have a name, then it's probably text, cdata, etc... */
+      /* if it does not have a name, then it's probably text, cdata, etc... */
       TidyBuffer buf;
       tidyBufInit(&buf);
       tidyNodeGetText(doc, child, &buf);
-      printf("%*.*s\n", indent, indent, buf.bp?(char *)buf.bp:"");
+      printf("%*.*s\n", indent, indent, buf.bp ? (char *)buf.bp : "");
       tidyBufFree(&buf);
     }
     dumpNode(doc, child, indent + 4); /* recursive */

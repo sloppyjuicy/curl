@@ -23,15 +23,15 @@ ftp
 FTP DL, file without C-D inside, using -o fname -i, without -D
 </name>
 <command option="no-output,no-include">
-ftp://%HOSTIP:%FTPPORT/path/file%TESTNUMBER -o log/download%TESTNUMBER -i
+ftp://%HOSTIP:%FTPPORT/path/file%TESTNUMBER -o %LOGDIR/download%TESTNUMBER -i
 </command>
-<postcheck>
-perl %SRCDIR/libtest/notexists.pl log/file%TESTNUMBER
-</postcheck>
 </client>
 
 # Verify data after the test has been "shot"
 <verify>
+<strip>
+QUIT
+</strip>
 <protocol>
 USER anonymous
 PASS ftp@example.com
@@ -44,13 +44,16 @@ RETR file%TESTNUMBER
 QUIT
 </protocol>
 
-<file1 name="log/download%TESTNUMBER">
+<file1 name="%LOGDIR/download%TESTNUMBER">
 fooo
 mooo
 </file1>
 
-<file2 name="log/stdout%TESTNUMBER">
+<file2 name="%LOGDIR/stdout%TESTNUMBER">
 </file2>
 
+<notexists>
+%LOGDIR/file%TESTNUMBER
+</notexists>
 </verify>
 </testcase>

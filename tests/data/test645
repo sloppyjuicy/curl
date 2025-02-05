@@ -39,6 +39,9 @@ hello
 
 # Client-side
 <client>
+<features>
+Mime
+</features>
 <server>
 http
 </server>
@@ -47,10 +50,10 @@ http
 lib%TESTNUMBER
 </tool>
 
- <name>
+<name>
 HTTP multi-part chunked mimepost using read callback for the file part
- </name>
- <command>
+</name>
+<command>
 http://%HOSTIP:%HTTPPORT/%TESTNUMBER
 </command>
 </client>
@@ -59,8 +62,8 @@ http://%HOSTIP:%HTTPPORT/%TESTNUMBER
 # Verify data after the test has been "shot"
 <verify>
 <strippart>
-s/^--------------------------[a-z0-9]*/------------------------------/
-s/boundary=------------------------[a-z0-9]*/boundary=----------------------------/
+s/^--------------------------[A-Za-z0-9]*/------------------------------/
+s/boundary=------------------------[A-Za-z0-9]*/boundary=----------------------------/
 </strippart>
 # Note that the stripping above removes 12 bytes from every occurrence of the
 # boundary string and since 5 of them are in the body contents, we see
@@ -73,7 +76,7 @@ Transfer-Encoding: chunked
 Content-Type: multipart/form-data; boundary=----------------------------
 Expect: 100-continue
 
-76
+7c
 ------------------------------
 Content-Disposition: form-data; name="sendfile"; filename="postit2.c"
 
@@ -89,7 +92,7 @@ y
 1
 
 
-65
+6b
 
 ------------------------------
 Content-Disposition: form-data; name="callbackdata"
@@ -108,11 +111,7 @@ y
 1
 
 
-%if hyper
-19A
-%else
-19a
-%endif
+1b2
 
 ------------------------------
 Content-Disposition: form-data; name="filename"
@@ -138,7 +137,7 @@ Transfer-Encoding: chunked
 Content-Type: multipart/form-data; boundary=----------------------------
 Expect: 100-continue
 
-84
+8a
 ------------------------------
 Content-Disposition: form-data; name="sendfile alternative"; filename="file name 2"
 
@@ -154,7 +153,7 @@ y
 1
 
 
-65
+6b
 
 ------------------------------
 Content-Disposition: form-data; name="callbackdata"
@@ -173,11 +172,7 @@ y
 1
 
 
-%if hyper
-19A
-%else
-19a
-%endif
+1b2
 
 ------------------------------
 Content-Disposition: form-data; name="filename"

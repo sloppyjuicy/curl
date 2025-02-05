@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -18,6 +18,8 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
 /* <DESC>
  * HTTP PUT using CURLOPT_POSTFIELDS
@@ -25,7 +27,6 @@
  */
 #include <stdio.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <curl/curl.h>
 
 static const char olivertwist[]=
@@ -35,11 +36,13 @@ static const char olivertwist[]=
   "small: to wit, a workhouse; and in this workhouse was born; on a day and "
   "date which I need not trouble myself to repeat, inasmuch as it can be of "
   "no possible consequence to the reader, in this stage of the business at "
-  "all events; the item of mortality whose name is prefixed to the head of "
-  "this chapter.";
+  "all events; the item of mortality whose name is prefixed";
+
+/* ... to the head of this chapter. String cut off to stick within the C90
+   509 byte limit. */
 
 /*
- * This example shows a HTTP PUT operation that sends a fixed buffer with
+ * This example shows an HTTP PUT operation that sends a fixed buffer with
  * CURLOPT_POSTFIELDS to the URL given as an argument.
  */
 
@@ -54,7 +57,7 @@ int main(int argc, char **argv)
 
   url = argv[1];
 
-  /* In windows, this will init the winsock stuff */
+  /* In Windows, this inits the Winsock stuff */
   curl_global_init(CURL_GLOBAL_ALL);
 
   /* get a curl handle */
@@ -67,7 +70,7 @@ int main(int argc, char **argv)
     headers = curl_slist_append(headers, "Content-Type: literature/classic");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-    /* pass on content in request body. When CURLOPT_POSTFIELDSIZE isn't used,
+    /* pass on content in request body. When CURLOPT_POSTFIELDSIZE is not used,
        curl does strlen to get the size. */
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, olivertwist);
 
@@ -82,7 +85,7 @@ int main(int argc, char **argv)
        name, not only a directory */
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
-    /* Now run off and do what you've been told! */
+    /* Now run off and do what you have been told! */
     res = curl_easy_perform(curl);
     /* Check for errors */
     if(res != CURLE_OK)

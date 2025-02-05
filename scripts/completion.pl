@@ -6,7 +6,7 @@
 #                            | (__| |_| |  _ <| |___
 #                             \___|\___/|_| \_\_____|
 #
-# Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
+# Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
@@ -18,6 +18,8 @@
 #
 # This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
 # KIND, either express or implied.
+#
+# SPDX-License-Identifier: curl
 #
 ###########################################################################
 
@@ -41,6 +43,9 @@ my @opts = parse_main_opts('--help all', $regex);
 
 if ($shell eq 'fish') {
     print "# curl fish completion\n\n";
+    print "# Complete file paths after @\n";
+    print q(complete -c curl -n 'string match -qr "^@" -- (commandline -ct)' -k -xa "(printf '%s\n' -- @(__fish_complete_suffix --complete=(commandline -ct | string replace -r '^@' '') ''))");
+    print "\n\n";
     print qq{$_ \n} foreach (@opts);
 } elsif ($shell eq 'zsh') {
     my $opts_str;
@@ -102,11 +107,20 @@ sub parse_main_opts {
             $option .= '}' if defined $short;
             $option .= '\'[' . trim($desc) . ']\'' if defined $desc;
 
-            $option .= ":'$arg'" if defined $arg;
-
-            $option .= ':_files'
-                if defined $arg and ($arg eq '<file>' || $arg eq '<filename>'
-                    || $arg eq '<dir>');
+            if (defined $arg) {
+                $option .= ":'$arg'";
+                if ($arg =~ /<file ?(name)?>|<path>/) {
+                    $option .= ':_files';
+                } elsif ($arg =~ /<dir>/) {
+                    $option .= ":'_path_files -/'";
+                } elsif ($arg =~ /<url>/i) {
+                    $option .= ':_urls';
+                } elsif ($long =~ /ftp/ && $arg =~ /<method>/) {
+                    $option .= ":'(multicwd nocwd singlecwd)'";
+                } elsif ($arg =~ /<method>/) {
+                    $option .= ":'(DELETE GET HEAD POST PUT)'";
+                }
+            }
         }
 
         push @list, $option;

@@ -22,10 +22,13 @@ iMenu results		error.host	1
 <server>
 gophers
 </server>
- <name>
+<killserver>
+gophers
+</killserver>
+<name>
 Gophers index
- </name>
- <command>
+</name>
+<command>
 -k gophers://%HOSTIP:%GOPHERSPORT/1/%TESTNUMBER
 </command>
 </client>

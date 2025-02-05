@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -18,9 +18,11 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
 /* <DESC>
- * CA cert in memory with OpenSSL to get a HTTPS page.
+ * CA cert in memory with OpenSSL to get an HTTPS page.
  * </DESC>
  */
 
@@ -29,10 +31,14 @@
 #include <curl/curl.h>
 #include <stdio.h>
 
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic ignored "-Woverlength-strings"
+#endif
+
 static size_t writefunction(void *ptr, size_t size, size_t nmemb, void *stream)
 {
   fwrite(ptr, size, nmemb, (FILE *)stream);
-  return (nmemb*size);
+  return nmemb * size;
 }
 
 static CURLcode sslctx_function(CURL *curl, void *sslctx, void *parm)
@@ -137,7 +143,7 @@ int main(void)
   curl_easy_setopt(ch, CURLOPT_SSL_VERIFYPEER, 1L);
   curl_easy_setopt(ch, CURLOPT_URL, "https://www.example.com/");
 
-  /* Turn off the default CA locations, otherwise libcurl will load CA
+  /* Turn off the default CA locations, otherwise libcurl loads CA
    * certificates from the locations that were detected/specified at
    * build-time
    */
@@ -153,19 +159,18 @@ int main(void)
   else
     printf("*** transfer failed ***\n");
 
-  /* use a fresh connection (optional)
-   * this option seriously impacts performance of multiple transfers but
-   * it is necessary order to demonstrate this example. recall that the
-   * ssl ctx callback is only called _before_ an SSL connection is
-   * established, therefore it will not affect existing verified SSL
-   * connections already in the connection cache associated with this
-   * handle. normally you would set the ssl ctx function before making
-   * any transfers, and not use this option.
+  /* use a fresh connection (optional) this option seriously impacts
+   * performance of multiple transfers but it is necessary order to
+   * demonstrate this example. recall that the ssl ctx callback is only called
+   * _before_ an SSL connection is established, therefore it does not affect
+   * existing verified SSL connections already in the connection cache
+   * associated with this handle. normally you would set the ssl ctx function
+   * before making any transfers, and not use this option.
    */
   curl_easy_setopt(ch, CURLOPT_FRESH_CONNECT, 1L);
 
-  /* second try: retrieve page using cacerts' certificate -> will succeed
-   * load the certificate by installing a function doing the necessary
+  /* second try: retrieve page using cacerts' certificate -> succeeds to load
+   * the certificate by installing a function doing the necessary
    * "modifications" to the SSL CONTEXT just before link init
    */
   curl_easy_setopt(ch, CURLOPT_SSL_CTX_FUNCTION, sslctx_function);
@@ -177,5 +182,5 @@ int main(void)
 
   curl_easy_cleanup(ch);
   curl_global_cleanup();
-  return rv;
+  return (int)rv;
 }

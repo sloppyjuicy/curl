@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -18,29 +18,24 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
 #include "test.h"
+#include "first.h"
 
 #ifdef HAVE_LOCALE_H
 #  include <locale.h> /* for setlocale() */
-#endif
-
-#ifdef HAVE_IO_H
-#  include <io.h> /* for setmode() */
-#endif
-
-#ifdef HAVE_FCNTL_H
-#  include <fcntl.h> /* for setmode() */
-#endif
-
-#ifdef USE_NSS
-#include <nspr.h>
 #endif
 
 #ifdef CURLDEBUG
 #  define MEMDEBUG_NODEFINES
 #  include "memdebug.h"
 #endif
+
+#include "timediff.h"
+
+#include "tool_binmode.h"
 
 int select_wrapper(int nfds, fd_set *rd, fd_set *wr, fd_set *exc,
                    struct timeval *tv)
@@ -56,7 +51,7 @@ int select_wrapper(int nfds, fd_set *rd, fd_set *wr, fd_set *exc,
    * select() can not be used to sleep without a single fd_set.
    */
   if(!nfds) {
-    Sleep((1000*tv->tv_sec) + (DWORD)(((double)tv->tv_usec)/1000.0));
+    Sleep((DWORD)curlx_tvtoms(tv));
     return 0;
   }
 #endif
@@ -65,11 +60,17 @@ int select_wrapper(int nfds, fd_set *rd, fd_set *wr, fd_set *exc,
 
 void wait_ms(int ms)
 {
-  struct timeval t;
-  t.tv_sec = ms/1000;
-  ms -= (int)t.tv_sec * 1000;
-  t.tv_usec = ms * 1000;
-  select_wrapper(0, NULL, NULL, NULL, &t);
+  if(ms < 0)
+    return;
+#ifdef USE_WINSOCK
+  Sleep((DWORD)ms);
+#else
+  {
+    struct timeval t;
+    curlx_mstotv(&t, ms);
+    select_wrapper(0, NULL, NULL, NULL, &t);
+  }
+#endif
 }
 
 char *libtest_arg2 = NULL;
@@ -79,9 +80,7 @@ char **test_argv;
 
 struct timeval tv_test_start; /* for test timing */
 
-#ifdef UNITTESTS
 int unitfail; /* for unittests */
-#endif
 
 #ifdef CURLDEBUG
 static void memory_tracking_init(void)
@@ -116,15 +115,15 @@ static void memory_tracking_init(void)
 #endif
 
 /* returns a hexdump in a static memory area */
-char *hexdump(const unsigned char *buffer, size_t len)
+char *hexdump(const unsigned char *buf, size_t len)
 {
   static char dump[200 * 3 + 1];
   char *p = dump;
   size_t i;
   if(len > 200)
     return NULL;
-  for(i = 0; i<len; i++, p += 3)
-    msnprintf(p, 4, "%02x ", buffer[i]);
+  for(i = 0; i < len; i++, p += 3)
+    msnprintf(p, 4, "%02x ", buf[i]);
   return dump;
 }
 
@@ -132,15 +131,11 @@ char *hexdump(const unsigned char *buffer, size_t len)
 int main(int argc, char **argv)
 {
   char *URL;
-  int result;
+  CURLcode result;
+  int basearg;
+  test_func_t test_func;
 
-#ifdef O_BINARY
-#  ifdef __HIGHC__
-  _setmode(stdout, O_BINARY);
-#  else
-  setmode(fileno(stdout), O_BINARY);
-#  endif
-#endif
+  CURL_SET_BINMODE(stdout);
 
   memory_tracking_init();
 
@@ -153,31 +148,72 @@ int main(int argc, char **argv)
   setlocale(LC_ALL, "");
 #endif
 
-  if(argc< 2) {
+  test_argc = argc;
+  test_argv = argv;
+
+#ifdef CURLTESTS_BUNDLED
+  {
+    char *test_name;
+
+    --test_argc;
+    ++test_argv;
+
+    basearg = 2;
+
+    if(argc < (basearg + 1)) {
+      fprintf(stderr, "Pass testname and URL as arguments please\n");
+      return 1;
+    }
+
+    test_name = argv[basearg - 1];
+    test_func = NULL;
+    {
+      size_t tmp;
+      for(tmp = 0; tmp < (sizeof(s_tests)/sizeof((s_tests)[0])); ++tmp) {
+        if(strcmp(test_name, s_tests[tmp].name) == 0) {
+          test_func = s_tests[tmp].ptr;
+          break;
+        }
+      }
+    }
+
+    if(!test_func) {
+      fprintf(stderr, "Test '%s' not found.\n", test_name);
+      return 1;
+    }
+
+    fprintf(stderr, "Test: %s\n", test_name);
+  }
+#else
+  basearg = 1;
+
+  if(argc < (basearg + 1)) {
     fprintf(stderr, "Pass URL as argument please\n");
     return 1;
   }
 
-  test_argc = argc;
-  test_argv = argv;
+  test_func = test;
+#endif
 
-  if(argc>2)
-    libtest_arg2 = argv[2];
+  if(argc > (basearg + 1))
+    libtest_arg2 = argv[basearg + 1];
 
-  if(argc>3)
-    libtest_arg3 = argv[3];
+  if(argc > (basearg + 2))
+    libtest_arg3 = argv[basearg + 2];
 
-  URL = argv[1]; /* provide this to the rest */
+  URL = argv[basearg]; /* provide this to the rest */
 
   fprintf(stderr, "URL: %s\n", URL);
 
-  result = test(URL);
+  result = test_func(URL);
+  fprintf(stderr, "Test ended with result %d\n", result);
 
-#ifdef USE_NSS
-  if(PR_Initialized())
-    /* prevent valgrind from reporting possibly lost memory (fd cache, ...) */
-    PR_Cleanup();
+#ifdef _WIN32
+  /* flush buffers of all streams regardless of mode */
+  _flushall();
 #endif
 
-  return result;
+  /* Regular program status codes are limited to 0..127 and 126 and 127 have
+   * special meanings by the shell, so limit a normal return code to 125 */
+  return (int)result <= 125 ? (int)result : 125;
 }

@@ -7,7 +7,7 @@
 #                            | (__| |_| |  _ <| |___
 #                             \___|\___/|_| \_\_____|
 #
-# Copyright (C) 2008 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+# Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
@@ -20,9 +20,11 @@
 # This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
 # KIND, either express or implied.
 #
+# SPDX-License-Identifier: curl
+#
 ###########################################################################
 #
-""" DICT server """
+"""DICT server."""
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
@@ -35,7 +37,7 @@ import sys
 from util import ClosingFileHandler
 
 try:  # Python 2
-    import SocketServer as socketserver
+    import SocketServer as socketserver  # type: ignore
 except ImportError:  # Python 3
     import socketserver
 
@@ -48,10 +50,7 @@ VERIFIED_RSP = "WE ROOLZ: {pid}"
 
 
 def dictserver(options):
-    """
-    Starts up a TCP server with a DICT handler and serves DICT requests
-    forever.
-    """
+    """Start up a TCP server with a DICT handler and serve DICT requests forever."""
     if options.pidfile:
         pid = os.getpid()
         # see tests/server/util.c function write_pidfile
@@ -72,13 +71,10 @@ def dictserver(options):
 
 
 class DictHandler(socketserver.BaseRequestHandler):
-    """Handler class for DICT connections.
+    """Handler class for DICT connections."""
 
-    """
     def handle(self):
-        """
-        Simple function which responds to all queries with a 552.
-        """
+        """Respond to all queries with a 552."""
         try:
             # First, send a response to allow the server to continue.
             rsp = "220 dictserver <xnooptions> <msgid@msgid>\n"
@@ -131,9 +127,7 @@ def get_options():
 
 
 def setup_logging(options):
-    """
-    Set up logging from the command line options
-    """
+    """Set up logging from the command line options."""
     root_logger = logging.getLogger()
     add_stdout = False
 
@@ -164,14 +158,11 @@ def setup_logging(options):
 
 
 class ScriptRC(object):
-    """Enum for script return codes"""
+    """Enum for script return codes."""
+
     SUCCESS = 0
     FAILURE = 1
     EXCEPTION = 2
-
-
-class ScriptException(Exception):
-    pass
 
 
 if __name__ == '__main__':
@@ -184,8 +175,8 @@ if __name__ == '__main__':
     # Run main script.
     try:
         rc = dictserver(options)
-    except Exception as e:
-        log.exception(e)
+    except Exception:
+        log.exception('Error running server')
         rc = ScriptRC.EXCEPTION
 
     if options.pidfile and os.path.isfile(options.pidfile):

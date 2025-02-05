@@ -5,7 +5,7 @@
 #                            | (__| |_| |  _ <| |___
 #                             \___|\___/|_| \_\_____|
 #
-# Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+# Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
@@ -18,6 +18,8 @@
 # This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
 # KIND, either express or implied.
 #
+# SPDX-License-Identifier: curl
+#
 #***************************************************************************
 
 # File version for 'aclocal' use. Keep it a single number.
@@ -27,7 +29,7 @@ dnl CURL_CHECK_OPTION_THREADED_RESOLVER
 dnl -------------------------------------------------
 dnl Verify if configure has been invoked with option
 dnl --enable-threaded-resolver or --disable-threaded-resolver, and
-dnl set shell variable want_thres as appropriate.
+dnl set shell variable want_threaded_resolver as appropriate.
 
 AC_DEFUN([CURL_CHECK_OPTION_THREADED_RESOLVER], [
   AC_MSG_CHECKING([whether to enable the threaded resolver])
@@ -39,14 +41,29 @@ AS_HELP_STRING([--disable-threaded-resolver],[Disable threaded resolver]),
   case "$OPT_THRES" in
     no)
       dnl --disable-threaded-resolver option used
-      want_thres="no"
+      want_threaded_resolver="no"
+      ;;
+    yes)
+      dnl --enable-threaded-resolver option used
+      want_threaded_resolver="yes"
       ;;
     *)
       dnl configure option not specified
-      want_thres="yes"
+      case $host_os in
+        msdos* | amiga*)
+          want_threaded_resolver="no"
+          ;;
+        *)
+          if test "$want_ares" = "yes"; then
+            want_threaded_resolver="no"
+          else
+            want_threaded_resolver="yes"
+          fi
+          ;;
+      esac
       ;;
   esac
-  AC_MSG_RESULT([$want_thres])
+  AC_MSG_RESULT([$want_threaded_resolver])
 ])
 
 dnl CURL_CHECK_OPTION_ARES
@@ -268,53 +285,6 @@ AS_HELP_STRING([--disable-symbol-hiding],[Disable hiding of library internal sym
 ])
 
 
-dnl CURL_CHECK_OPTION_THREADS
-dnl -------------------------------------------------
-dnl Verify if configure has been invoked with option
-dnl --enable-threads or --disable-threads, and
-dnl set shell variable want_threads as appropriate.
-
-dnl AC_DEFUN([CURL_CHECK_OPTION_THREADS], [
-dnl   AC_BEFORE([$0],[CURL_CHECK_LIB_THREADS])dnl
-dnl   AC_MSG_CHECKING([whether to enable threads for DNS lookups])
-dnl   OPT_THREADS="default"
-dnl   AC_ARG_ENABLE(threads,
-dnl AS_HELP_STRING([--enable-threads@<:@=PATH@:>@],[Enable threads for DNS lookups])
-dnl AS_HELP_STRING([--disable-threads],[Disable threads for DNS lookups]),
-dnl   OPT_THREADS=$enableval)
-dnl   case "$OPT_THREADS" in
-dnl     no)
-dnl       dnl --disable-threads option used
-dnl       want_threads="no"
-dnl       AC_MSG_RESULT([no])
-dnl       ;;
-dnl     default)
-dnl       dnl configure option not specified
-dnl       want_threads="no"
-dnl       AC_MSG_RESULT([(assumed) no])
-dnl       ;;
-dnl     *)
-dnl       dnl --enable-threads option used
-dnl       want_threads="yes"
-dnl       want_threads_path="$enableval"
-dnl       AC_MSG_RESULT([yes])
-dnl       ;;
-dnl   esac
-dnl   #
-dnl   if test "$want_ares" = "assume_yes"; then
-dnl     if test "$want_threads" = "yes"; then
-dnl       AC_MSG_CHECKING([whether to ignore c-ares enabling assumed setting])
-dnl       AC_MSG_RESULT([yes])
-dnl       want_ares="no"
-dnl     else
-dnl       want_ares="yes"
-dnl     fi
-dnl   fi
-dnl   if test "$want_threads" = "yes" && test "$want_ares" = "yes"; then
-dnl     AC_MSG_ERROR([options --enable-ares and --enable-threads are mutually exclusive, at most one may be enabled.])
-dnl   fi
-dnl ])
-
 dnl CURL_CHECK_OPTION_RT
 dnl -------------------------------------------------
 dnl Verify if configure has been invoked with option
@@ -419,10 +389,8 @@ dnl Check for how to set a socket into non-blocking state.
 
 AC_DEFUN([CURL_CHECK_NONBLOCKING_SOCKET], [
   AC_REQUIRE([CURL_CHECK_FUNC_FCNTL])dnl
-  AC_REQUIRE([CURL_CHECK_FUNC_IOCTL])dnl
   AC_REQUIRE([CURL_CHECK_FUNC_IOCTLSOCKET])dnl
   AC_REQUIRE([CURL_CHECK_FUNC_IOCTLSOCKET_CAMEL])dnl
-  AC_REQUIRE([CURL_CHECK_FUNC_SETSOCKOPT])dnl
   #
   tst_method="unknown"
 
@@ -458,8 +426,7 @@ AC_DEFUN([CURL_CONFIGURE_SYMBOL_HIDING], [
   AC_MSG_CHECKING([whether hiding of library internal symbols will actually happen])
   CFLAG_CURL_SYMBOL_HIDING=""
   doing_symbol_hiding="no"
-  if test x"$curl_cv_native_windows" != "xyes" &&
-    test "$want_symbol_hiding" = "yes" &&
+  if test "$want_symbol_hiding" = "yes" &&
     test "$supports_symbol_hiding" = "yes"; then
     doing_symbol_hiding="yes"
     CFLAG_CURL_SYMBOL_HIDING="$symbol_hiding_CFLAGS"
@@ -476,9 +443,8 @@ AC_DEFUN([CURL_CONFIGURE_SYMBOL_HIDING], [
 
 dnl CURL_CHECK_LIB_ARES
 dnl -------------------------------------------------
-dnl When c-ares library support has been requested,
-dnl performs necessary checks and adjustsments needed
-dnl to enable support of this library.
+dnl When c-ares library support has been requested, performs necessary checks
+dnl and adjustments needed to enable support of this library.
 
 AC_DEFUN([CURL_CHECK_LIB_ARES], [
   #
@@ -486,10 +452,9 @@ AC_DEFUN([CURL_CHECK_LIB_ARES], [
     dnl c-ares library support has been requested
     clean_CPPFLAGS="$CPPFLAGS"
     clean_LDFLAGS="$LDFLAGS"
+    clean_LDFLAGSPC="$LDFLAGSPC"
     clean_LIBS="$LIBS"
-    embedded_ares="unknown"
     configure_runpath=`pwd`
-    embedded_ares_builddir="$configure_runpath/ares"
     if test -n "$want_ares_path"; then
       dnl c-ares library path has been specified
       ARES_PCDIR="$want_ares_path/lib/pkgconfig"
@@ -511,138 +476,102 @@ AC_DEFUN([CURL_CHECK_LIB_ARES], [
         ares_LIBS="-lcares"
       fi
     else
-      dnl c-ares library path has not been given
-      if test -d "$srcdir/ares"; then
-        dnl c-ares sources embedded in curl tree
-        embedded_ares="yes"
-        AC_CONFIG_SUBDIRS(ares)
-        dnl c-ares has installable configured header files, path
-        dnl inclusion fully done in makefiles for in-tree builds.
-        ares_CPPFLAGS=""
-        ares_LDFLAGS="-L$embedded_ares_builddir"
-        ares_LIBS="-lcares"
+      dnl c-ares path not specified, use defaults
+      CURL_CHECK_PKGCONFIG(libcares)
+      if test "$PKGCONFIG" != "no" ; then
+        ares_LIBS=`$PKGCONFIG --libs-only-l libcares`
+        ares_LDFLAGS=`$PKGCONFIG --libs-only-L libcares`
+        ares_CPPFLAGS=`$PKGCONFIG --cflags-only-I libcares`
+        AC_MSG_NOTICE([pkg-config: ares_LIBS: "$ares_LIBS"])
+        AC_MSG_NOTICE([pkg-config: ares_LDFLAGS: "$ares_LDFLAGS"])
+        AC_MSG_NOTICE([pkg-config: ares_CPPFLAGS: "$ares_CPPFLAGS"])
       else
-        dnl c-ares path not specified, use defaults
-        CURL_CHECK_PKGCONFIG(libcares)
-        if test "$PKGCONFIG" != "no" ; then
-          ares_LIBS=`$PKGCONFIG --libs-only-l libcares`
-          ares_LDFLAGS=`$PKGCONFIG --libs-only-L libcares`
-          ares_CPPFLAGS=`$PKGCONFIG --cflags-only-I libcares`
-          AC_MSG_NOTICE([pkg-config: ares_LIBS: "$ares_LIBS"])
-          AC_MSG_NOTICE([pkg-config: ares_LDFLAGS: "$ares_LDFLAGS"])
-          AC_MSG_NOTICE([pkg-config: ares_CPPFLAGS: "$ares_CPPFLAGS"])
-        else
-          ares_CPPFLAGS=""
-          ares_LDFLAGS=""
-          ares_LIBS="-lcares"
-        fi
+        ares_CPPFLAGS=""
+        ares_LDFLAGS=""
+        ares_LIBS="-lcares"
       fi
     fi
     #
     CPPFLAGS="$clean_CPPFLAGS $ares_CPPFLAGS"
     LDFLAGS="$clean_LDFLAGS $ares_LDFLAGS"
+    LDFLAGSPC="$clean_LDFLAGSPC $ares_LDFLAGS"
     LIBS="$ares_LIBS $clean_LIBS"
     #
-    if test "$embedded_ares" != "yes"; then
-      dnl check if c-ares new enough when not using an embedded
-      dnl source tree one which normally has not been built yet.
-      AC_MSG_CHECKING([that c-ares is good and recent enough])
-      AC_LINK_IFELSE([
-        AC_LANG_PROGRAM([[
-#include <ares.h>
-          /* set of dummy functions in case c-ares was built with debug */
-          void curl_dofree() { }
-          void curl_sclose() { }
-          void curl_domalloc() { }
-          void curl_docalloc() { }
-          void curl_socket() { }
-        ]],[[
-          ares_channel channel;
-          ares_cancel(channel); /* added in 1.2.0 */
-          ares_process_fd(channel, 0, 0); /* added in 1.4.0 */
-          ares_dup(&channel, channel); /* added in 1.6.0 */
-        ]])
-      ],[
-        AC_MSG_RESULT([yes])
-      ],[
-        AC_MSG_RESULT([no])
-        AC_MSG_ERROR([c-ares library defective or too old])
-        dnl restore initial settings
-        CPPFLAGS="$clean_CPPFLAGS"
-        LDFLAGS="$clean_LDFLAGS"
-        LIBS="$clean_LIBS"
-        # prevent usage
-        want_ares="no"
-      ])
-    fi
+
+    dnl check if c-ares new enough
+    AC_MSG_CHECKING([that c-ares is good and recent enough])
+    AC_LINK_IFELSE([
+      AC_LANG_PROGRAM([[
+        #include <ares.h>
+        /* set of dummy functions in case c-ares was built with debug */
+        void curl_dofree() { }
+        void curl_sclose() { }
+        void curl_domalloc() { }
+        void curl_docalloc() { }
+        void curl_socket() { }
+      ]],[[
+        ares_channel channel;
+        ares_cancel(channel); /* added in 1.2.0 */
+        ares_process_fd(channel, 0, 0); /* added in 1.4.0 */
+        ares_dup(&channel, channel); /* added in 1.6.0 */
+      ]])
+    ],[
+      AC_MSG_RESULT([yes])
+    ],[
+      AC_MSG_RESULT([no])
+      AC_MSG_ERROR([c-ares library defective or too old])
+      dnl restore initial settings
+      CPPFLAGS="$clean_CPPFLAGS"
+      LDFLAGS="$clean_LDFLAGS"
+      LDFLAGSPC="$clean_LDFLAGSPC"
+      LIBS="$clean_LIBS"
+      # prevent usage
+      want_ares="no"
+    ])
+
     if test "$want_ares" = "yes"; then
       dnl finally c-ares will be used
       AC_DEFINE(USE_ARES, 1, [Define to enable c-ares support])
-      AC_SUBST([USE_ARES], [1])
+      USE_ARES=1
+      LIBCURL_PC_REQUIRES_PRIVATE="$LIBCURL_PC_REQUIRES_PRIVATE libcares"
       curl_res_msg="c-ares"
     fi
   fi
 ])
 
+dnl CURL_CHECK_OPTION_HTTPSRR
+dnl -----------------------------------------------------
+dnl Verify whether configure has been invoked with option
+dnl --enable-httpsrr or --disable-httpsrr, and set
+dnl shell variable want_httpsrr as appropriate.
 
-dnl CURL_CHECK_OPTION_NTLM_WB
-dnl -------------------------------------------------
-dnl Verify if configure has been invoked with option
-dnl --enable-ntlm-wb or --disable-ntlm-wb, and set
-dnl shell variable want_ntlm_wb and want_ntlm_wb_file
-dnl as appropriate.
-
-AC_DEFUN([CURL_CHECK_OPTION_NTLM_WB], [
-  AC_BEFORE([$0],[CURL_CHECK_NTLM_WB])dnl
-  OPT_NTLM_WB="default"
-  AC_ARG_ENABLE(ntlm-wb,
-AS_HELP_STRING([--enable-ntlm-wb@<:@=FILE@:>@],[Enable NTLM delegation to winbind's ntlm_auth helper, where FILE is ntlm_auth's absolute filename (default: /usr/bin/ntlm_auth)])
-AS_HELP_STRING([--disable-ntlm-wb],[Disable NTLM delegation to winbind's ntlm_auth helper]),
-  OPT_NTLM_WB=$enableval)
-  want_ntlm_wb_file="/usr/bin/ntlm_auth"
-  case "$OPT_NTLM_WB" in
+AC_DEFUN([CURL_CHECK_OPTION_HTTPSRR], [
+  AC_MSG_CHECKING([whether to enable HTTPSRR support])
+  OPT_HTTPSRR="default"
+  AC_ARG_ENABLE(httpsrr,
+AS_HELP_STRING([--enable-httpsrr],[Enable HTTPSRR support])
+AS_HELP_STRING([--disable-httpsrr],[Disable HTTPSRR support]),
+  OPT_HTTPSRR=$enableval)
+  case "$OPT_HTTPSRR" in
     no)
-      dnl --disable-ntlm-wb option used
-      want_ntlm_wb="no"
+      dnl --disable-httpsrr option used
+      want_httpsrr="no"
+      curl_httpsrr_msg="no      (--enable-httpsrr)"
+      AC_MSG_RESULT([no])
       ;;
     default)
       dnl configure option not specified
-      want_ntlm_wb="yes"
+      want_httpsrr="no"
+      curl_httpsrr_msg="no      (--enable-httpsrr)"
+      AC_MSG_RESULT([no])
       ;;
     *)
-      dnl --enable-ntlm-wb option used
-      want_ntlm_wb="yes"
-      if test -n "$enableval" && test "$enableval" != "yes"; then
-        want_ntlm_wb_file="$enableval"
-      fi
+      dnl --enable-httpsrr option used
+      want_httpsrr="yes"
+      curl_httpsrr_msg="enabled"
+      AC_MSG_RESULT([yes])
       ;;
   esac
-])
-
-
-dnl CURL_CHECK_NTLM_WB
-dnl -------------------------------------------------
-dnl Check if support for NTLM delegation to winbind's
-dnl ntlm_auth helper will finally be enabled depending
-dnl on given configure options and target platform.
-
-AC_DEFUN([CURL_CHECK_NTLM_WB], [
-  AC_REQUIRE([CURL_CHECK_OPTION_NTLM_WB])dnl
-  AC_REQUIRE([CURL_CHECK_NATIVE_WINDOWS])dnl
-  AC_MSG_CHECKING([whether to enable NTLM delegation to winbind's helper])
-  if test "$curl_cv_native_windows" = "yes" ||
-    test "x$SSL_ENABLED" = "x"; then
-    want_ntlm_wb_file=""
-    want_ntlm_wb="no"
-  fi
-  AC_MSG_RESULT([$want_ntlm_wb])
-  if test "$want_ntlm_wb" = "yes"; then
-    AC_DEFINE(NTLM_WB_ENABLED, 1,
-      [Define to enable NTLM delegation to winbind's ntlm_auth helper.])
-    AC_DEFINE_UNQUOTED(NTLM_WB_FILE, "$want_ntlm_wb_file",
-      [Define absolute filename for winbind's ntlm_auth helper.])
-    NTLM_WB_ENABLED=1
-  fi
 ])
 
 dnl CURL_CHECK_OPTION_ECH
@@ -675,8 +604,46 @@ AS_HELP_STRING([--disable-ech],[Disable ECH support]),
       dnl --enable-ech option used
       want_ech="yes"
       curl_ech_msg="enabled (--disable-ech)"
-      experimental="ech"
       AC_MSG_RESULT([yes])
       ;;
   esac
+])
+])
+
+dnl CURL_CHECK_OPTION_SSLS_EXPORT
+dnl -----------------------------------------------------
+dnl Verify whether configure has been invoked with option
+dnl --enable-ssl-session-export or --disable-ssl-session-export, and set
+dnl shell variable want_ech as appropriate.
+
+AC_DEFUN([CURL_CHECK_OPTION_SSLS_EXPORT], [
+  AC_MSG_CHECKING([whether to enable SSL session export support])
+  OPT_SSLS_EXPORT="default"
+  AC_ARG_ENABLE(ssls-export,
+AS_HELP_STRING([--enable-ssls-export],
+               [Enable SSL session export support])
+AS_HELP_STRING([--disable-ssls-export],
+               [Disable SSL session export support]),
+  OPT_SSLS_EXPORT=$enableval)
+  case "$OPT_SSLS_EXPORT" in
+    no)
+      dnl --disable-ssls-export option used
+      want_ssls_export="no"
+      curl_ssls_export_msg="no      (--enable-ssls-export)"
+      AC_MSG_RESULT([no])
+      ;;
+    default)
+      dnl configure option not specified
+      want_ssls_export="no"
+      curl_ssls_export_msg="no      (--enable-ssls-export)"
+      AC_MSG_RESULT([no])
+      ;;
+    *)
+      dnl --enable-ssls-export option used
+      want_ssls_export="yes"
+      curl_ssls_export_msg="enabled (--disable-ssls-export)"
+      AC_MSG_RESULT([yes])
+      ;;
+  esac
+])
 ])

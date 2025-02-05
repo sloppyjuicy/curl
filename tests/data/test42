@@ -26,11 +26,7 @@ body
 </data2>
 <datacheck>
 HTTP/1.1 302 OK swsclose
-%if !hyper
 Location: ../m o o.html/%TESTNUMBER0002    
-%else
-Location: ../m o o.html/%TESTNUMBER0002
-%endif
 Date: Tue, 09 Nov 2010 14:49:00 GMT
 Connection: close
 
@@ -49,10 +45,10 @@ body
 <server>
 http
 </server>
- <name>
+<name>
 HTTP redirect with whitespace in path (and conversion)
- </name>
- <command>
+</name>
+<command>
 http://%HOSTIP:%HTTPPORT/we/are/all/twits/%TESTNUMBER -L
 </command>
 </client>

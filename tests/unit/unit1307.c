@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -17,6 +17,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 #include "curlcheck.h"
@@ -278,11 +280,11 @@ UNITTEST_START
   enum system machine;
 
 #ifdef HAVE_FNMATCH
-  if(strstr(OS, "apple") || strstr(OS, "darwin")) {
-    machine = SYSTEM_MACOS;
-  }
-  else
-    machine = SYSTEM_LINUX;
+#ifdef __APPLE__
+  machine = SYSTEM_MACOS;
+#else
+  machine = SYSTEM_LINUX;
+#endif
   printf("Tested with system fnmatch(), %s-style\n",
          machine == SYSTEM_LINUX ? "linux" : "mac");
 #else
@@ -314,10 +316,6 @@ UNITTEST_STOP
 #else
 
 UNITTEST_START
-{
-  /* nothing to do, just fail */
-  return 1;
-}
 UNITTEST_STOP
 
 #endif

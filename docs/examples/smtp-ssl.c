@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -18,10 +18,12 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
 
 /* <DESC>
- * SMTP example using SSL
+ * Send SMTP email using implicit SSL
  * </DESC>
  */
 
@@ -49,11 +51,11 @@ static const char *payload_text =
   "Message-ID: <dcd7cb36-11db-487a-9f3a-e652a9458efd@"
   "rfcpedant.example.org>\r\n"
   "Subject: SMTP example message\r\n"
-  "\r\n" /* empty line to divide headers from body, see RFC5322 */
+  "\r\n" /* empty line to divide headers from body, see RFC 5322 */
   "The body of the message starts here.\r\n"
   "\r\n"
   "It could be a lot of lines, could be MIME encoded, whatever.\r\n"
-  "Check RFC5322.\r\n";
+  "Check RFC 5322.\r\n";
 
 struct upload_status {
   size_t bytes_read;
@@ -101,7 +103,7 @@ int main(void)
      * than smtp:// to request a SSL based connection. */
     curl_easy_setopt(curl, CURLOPT_URL, "smtps://mainserver.example.net");
 
-    /* If you want to connect to a site who isn't using a certificate that is
+    /* If you want to connect to a site who is not using a certificate that is
      * signed by one of the certs in the CA bundle you have, you can skip the
      * verification of the server's certificate. This makes the connection
      * A LOT LESS SECURE.
@@ -113,16 +115,16 @@ int main(void)
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
 #endif
 
-    /* If the site you're connecting to uses a different host name that what
+    /* If the site you are connecting to uses a different host name that what
      * they have mentioned in their server certificate's commonName (or
-     * subjectAltName) fields, libcurl will refuse to connect. You can skip
-     * this check, but this will make the connection less secure. */
+     * subjectAltName) fields, libcurl refuses to connect. You can skip this
+     * check, but it makes the connection insecure. */
 #ifdef SKIP_HOSTNAME_VERIFICATION
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 #endif
 
-    /* Note that this option isn't strictly required, omitting it will result
-     * in libcurl sending the MAIL FROM command with empty sender data. All
+    /* Note that this option is not strictly required, omitting it results in
+     * libcurl sending the MAIL FROM command with empty sender data. All
      * autoresponses should have an empty reverse-path, and should be directed
      * to the address in the reverse-path which triggered them. Otherwise,
      * they could cause an endless loop. See RFC 5321 Section 4.5.5 for more
@@ -137,14 +139,14 @@ int main(void)
     recipients = curl_slist_append(recipients, CC_MAIL);
     curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
 
-    /* We're using a callback function to specify the payload (the headers and
+    /* We are using a callback function to specify the payload (the headers and
      * body of the message). You could just use the CURLOPT_READDATA option to
      * specify a FILE pointer to read from. */
     curl_easy_setopt(curl, CURLOPT_READFUNCTION, payload_source);
     curl_easy_setopt(curl, CURLOPT_READDATA, &upload_ctx);
     curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
 
-    /* Since the traffic will be encrypted, it is very useful to turn on debug
+    /* Since the traffic is encrypted, it is useful to turn on debug
      * information within libcurl to see what is happening during the
      * transfer */
     curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);

@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -17,6 +17,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 #include "curlcheck.h"
@@ -56,7 +58,7 @@ static bool usec_matches_seconds(timediff_t time_usec, int expected_seconds)
   bool same = (time_sec == expected_seconds);
   fprintf(stderr, "is %d us same as %d seconds? %s\n",
           (int)time_usec, expected_seconds,
-          same?"Yes":"No");
+          same ? "Yes" : "No");
   return same;
 }
 
@@ -74,7 +76,7 @@ static void expect_timer_seconds(struct Curl_easy *data, int seconds)
 }
 
 /* Scenario: simulate a redirect. When a redirect occurs, t_nslookup,
- * t_connect, t_appconnect, t_pretransfer, and t_starttransfer are addative.
+ * t_connect, t_appconnect, t_pretransfer, and t_starttransfer are additive.
  * E.g., if t_starttransfer took 2 seconds initially and took another 1
  * second for the redirect request, then the resulting t_starttransfer should
  * be 3 seconds. */

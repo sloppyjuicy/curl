@@ -5,7 +5,7 @@
 #                            | (__| |_| |  _ <| |___
 #                             \___|\___/|_| \_\_____|
 #
-# Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
+# Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
@@ -17,6 +17,8 @@
 #
 # This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
 # KIND, either express or implied.
+#
+# SPDX-License-Identifier: curl
 #
 ###########################################################################
 #***************************************************************************
@@ -42,11 +44,11 @@ dnl -------------------------------------------------
 dnl This is done to prevent compiler warning
 dnl 'function declaration isn't a prototype'
 dnl in function main. This requires at least
-dnl a c89 compiler and does not support K&R.
+dnl a C89 compiler and does not support K&R.
 
 m4_define([AC_LANG_PROGRAM(C)],
 [$1
-int main (void)
+int main(void)
 {
 $2
  ;
@@ -91,6 +93,6 @@ extern "C"
 #endif
 char $1 ();
 #if defined __stub_$1 || defined __stub___$1
-choke me
+#error force compilation error
 #endif
 ], [return $1 ();])])

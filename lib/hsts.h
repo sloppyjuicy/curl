@@ -7,7 +7,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 2020 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -20,6 +20,8 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
 #include "curl_setup.h"
 
@@ -27,18 +29,18 @@
 #include <curl/curl.h>
 #include "llist.h"
 
-#ifdef DEBUGBUILD
+#if defined(DEBUGBUILD) || defined(UNITTESTS)
 extern time_t deltatime;
 #endif
 
 struct stsentry {
-  struct Curl_llist_element node;
+  struct Curl_llist_node node;
   const char *host;
   bool includeSubDomains;
   curl_off_t expires; /* the timestamp of this entry's expiry */
 };
 
-/* The HSTS cache. Needs to be able to tailmatch host names. */
+/* The HSTS cache. Needs to be able to tailmatch hostnames. */
 struct hsts {
   struct Curl_llist list;
   char *filename;
@@ -50,16 +52,18 @@ void Curl_hsts_cleanup(struct hsts **hp);
 CURLcode Curl_hsts_parse(struct hsts *h, const char *hostname,
                          const char *sts);
 struct stsentry *Curl_hsts(struct hsts *h, const char *hostname,
-                           bool subdomain);
+                           size_t hlen, bool subdomain);
 CURLcode Curl_hsts_save(struct Curl_easy *data, struct hsts *h,
                         const char *file);
 CURLcode Curl_hsts_loadfile(struct Curl_easy *data,
                             struct hsts *h, const char *file);
 CURLcode Curl_hsts_loadcb(struct Curl_easy *data,
                           struct hsts *h);
+void Curl_hsts_loadfiles(struct Curl_easy *data);
 #else
 #define Curl_hsts_cleanup(x)
 #define Curl_hsts_loadcb(x,y) CURLE_OK
 #define Curl_hsts_save(x,y,z)
+#define Curl_hsts_loadfiles(x)
 #endif /* CURL_DISABLE_HTTP || CURL_DISABLE_HSTS */
 #endif /* HEADER_CURL_HSTS_H */

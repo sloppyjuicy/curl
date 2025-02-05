@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -18,20 +18,14 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
 #include "server_setup.h"
 
 #include "getpart.h"
 
-#define ENABLE_CURLX_PRINTF
-/* make the curlx header define all printf() functions to use the curlx_*
-   versions instead */
 #include "curlx.h" /* from the private lib dir */
-
-/* just to please curl_base64.h we create a fake struct */
-struct Curl_easy {
-  int fake;
-};
 
 #include "curl_base64.h"
 #include "curl_memory.h"
@@ -50,6 +44,7 @@ struct Curl_easy {
 #endif
 
 #if defined(_MSC_VER) && defined(_DLL)
+#  pragma warning(push)
 #  pragma warning(disable:4232) /* MSVC extension, dllimport identity */
 #endif
 
@@ -58,41 +53,40 @@ curl_free_callback Curl_cfree = (curl_free_callback)free;
 curl_realloc_callback Curl_crealloc = (curl_realloc_callback)realloc;
 curl_strdup_callback Curl_cstrdup = (curl_strdup_callback)strdup;
 curl_calloc_callback Curl_ccalloc = (curl_calloc_callback)calloc;
-#if defined(WIN32) && defined(UNICODE)
+#if defined(_WIN32) && defined(UNICODE)
 curl_wcsdup_callback Curl_cwcsdup = (curl_wcsdup_callback)_wcsdup;
 #endif
 
 #if defined(_MSC_VER) && defined(_DLL)
-#  pragma warning(default:4232) /* MSVC extension, dllimport identity */
+#  pragma warning(pop)
 #endif
 
 
 /*
- * Curl_convert_clone() returns a malloced copy of the source string (if
- * returning CURLE_OK), with the data converted to network format. This
- * function is used by base64 code in libcurl built to support data
- * conversion. This is a DUMMY VERSION that returns data unmodified - for
- * use by the test server only.
+ * line_length()
+ *
+ * Counts the number of characters in a line including a new line.
+ * Unlike strlen() it does not stop at nul bytes.
+ *
  */
-CURLcode Curl_convert_clone(struct Curl_easy *data,
-                            const char *indata,
-                            size_t insize,
-                            char **outbuf);
-CURLcode Curl_convert_clone(struct Curl_easy *data,
-                            const char *indata,
-                            size_t insize,
-                            char **outbuf)
+static size_t line_length(const char *buffer, int bytestocheck)
 {
-  char *convbuf;
-  (void)data;
+  size_t length = 1;
 
-  convbuf = malloc(insize);
-  if(!convbuf)
-    return CURLE_OUT_OF_MEMORY;
+  while(*buffer != '\n' && --bytestocheck) {
+    length++;
+    buffer++;
+  }
+  if(*buffer != '\n') {
+    /*
+     * We didn't find a new line so the last byte must be a
+     * '\0' character inserted by fgets() which we should not
+     * count.
+     */
+    length--;
+  }
 
-  memcpy(convbuf, indata, insize);
-  *outbuf = convbuf;
-  return CURLE_OK;
+  return length;
 }
 
 /*
@@ -113,35 +107,36 @@ CURLcode Curl_convert_clone(struct Curl_easy *data,
  *   GPE_OK
  */
 
-static int readline(char **buffer, size_t *bufsize, FILE *stream)
+static int readline(char **buffer, size_t *bufsize, size_t *length,
+                    FILE *stream)
 {
   size_t offset = 0;
   char *newptr;
 
   if(!*buffer) {
-    *buffer = malloc(128);
+    *buffer = calloc(1, 128);
     if(!*buffer)
       return GPE_OUT_OF_MEMORY;
     *bufsize = 128;
   }
 
   for(;;) {
-    size_t length;
     int bytestoread = curlx_uztosi(*bufsize - offset);
 
     if(!fgets(*buffer + offset, bytestoread, stream))
       return (offset != 0) ? GPE_OK : GPE_END_OF_FILE;
 
-    length = offset + strlen(*buffer + offset);
-    if(*(*buffer + length - 1) == '\n')
+    *length = offset + line_length(*buffer + offset, bytestoread);
+    if(*(*buffer + *length - 1) == '\n')
       break;
-    offset = length;
-    if(length < *bufsize - 1)
+    offset = *length;
+    if(*length < *bufsize - 1)
       continue;
 
     newptr = realloc(*buffer, *bufsize * 2);
     if(!newptr)
       return GPE_OUT_OF_MEMORY;
+    memset(&newptr[*bufsize], 0, *bufsize);
     *buffer = newptr;
     *bufsize *= 2;
   }
@@ -179,10 +174,10 @@ static int appenddata(char  **dst_buf,   /* dest buffer */
                       size_t *dst_len,   /* dest buffer data length */
                       size_t *dst_alloc, /* dest buffer allocated size */
                       char   *src_buf,   /* source buffer */
+                      size_t  src_len,   /* source buffer length */
                       int     src_b64)   /* != 0 if source is base64 encoded */
 {
   size_t need_alloc = 0;
-  size_t src_len = strlen(src_buf);
 
   if(!src_len)
     return GPE_OK;
@@ -293,8 +288,10 @@ int getpart(char **outbuf, size_t *outlen,
   } len;
   size_t bufsize = 0;
   size_t outalloc = 256;
+  size_t datalen;
   int in_wanted_part = 0;
   int base64 = 0;
+  int nonewline = 0;
   int error;
 
   enum {
@@ -313,7 +310,7 @@ int getpart(char **outbuf, size_t *outlen,
 
   couter[0] = cmain[0] = csub[0] = ptag[0] = patt[0] = '\0';
 
-  while((error = readline(&buffer, &bufsize, stream)) == GPE_OK) {
+  while((error = readline(&buffer, &bufsize, &datalen, stream)) == GPE_OK) {
 
     ptr = buffer;
     EAT_SPACE(ptr);
@@ -321,7 +318,8 @@ int getpart(char **outbuf, size_t *outlen,
     if('<' != *ptr) {
       if(in_wanted_part) {
         show(("=> %s", buffer));
-        error = appenddata(outbuf, outlen, &outalloc, buffer, base64);
+        error = appenddata(outbuf, outlen, &outalloc, buffer, datalen,
+                           base64);
         if(error)
           break;
       }
@@ -351,15 +349,14 @@ int getpart(char **outbuf, size_t *outlen,
         state = STATE_INMAIN;
         csub[0] = '\0';
         if(in_wanted_part) {
-          /* end of wanted part */
-          in_wanted_part = 0;
-
           /* Do we need to base64 decode the data? */
           if(base64) {
             error = decodedata(outbuf, outlen);
             if(error)
               return error;
           }
+          if(nonewline)
+            (*outlen)--;
           break;
         }
       }
@@ -368,15 +365,14 @@ int getpart(char **outbuf, size_t *outlen,
         state = STATE_OUTER;
         cmain[0] = '\0';
         if(in_wanted_part) {
-          /* end of wanted part */
-          in_wanted_part = 0;
-
           /* Do we need to base64 decode the data? */
           if(base64) {
             error = decodedata(outbuf, outlen);
             if(error)
               return error;
           }
+          if(nonewline)
+            (*outlen)--;
           break;
         }
       }
@@ -384,11 +380,8 @@ int getpart(char **outbuf, size_t *outlen,
         /* end of outermost file section */
         state = STATE_OUTSIDE;
         couter[0] = '\0';
-        if(in_wanted_part) {
-          /* end of wanted part */
-          in_wanted_part = 0;
+        if(in_wanted_part)
           break;
-        }
       }
 
     }
@@ -451,6 +444,10 @@ int getpart(char **outbuf, size_t *outlen,
               /* bit rough test, but "mostly" functional, */
               /* treat wanted part data as base64 encoded */
               base64 = 1;
+          if(strstr(patt, "nonewline=")) {
+            show(("* setting nonewline\n"));
+            nonewline = 1;
+          }
         }
         continue;
       }
@@ -459,7 +456,7 @@ int getpart(char **outbuf, size_t *outlen,
 
     if(in_wanted_part) {
       show(("=> %s", buffer));
-      error = appenddata(outbuf, outlen, &outalloc, buffer, base64);
+      error = appenddata(outbuf, outlen, &outalloc, buffer, datalen, base64);
       if(error)
         break;
     }

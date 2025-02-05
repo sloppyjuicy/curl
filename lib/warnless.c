@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -17,6 +17,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 
@@ -33,9 +35,14 @@
 
 #endif /* __INTEL_COMPILER && __unix__ */
 
-#define BUILDING_WARNLESS_C 1
-
 #include "warnless.h"
+
+#ifdef _WIN32
+#undef read
+#undef write
+#endif
+
+#include <limits.h>
 
 #define CURL_MASK_UCHAR   ((unsigned char)~0)
 #define CURL_MASK_SCHAR   (CURL_MASK_UCHAR >> 1)
@@ -94,28 +101,6 @@ unsigned char curlx_ultouc(unsigned long ulnum)
 }
 
 /*
-** unsigned size_t to signed curl_off_t
-*/
-
-curl_off_t curlx_uztoso(size_t uznum)
-{
-#ifdef __INTEL_COMPILER
-#  pragma warning(push)
-#  pragma warning(disable:810) /* conversion may lose significant bits */
-#elif defined(_MSC_VER)
-#  pragma warning(push)
-#  pragma warning(disable:4310) /* cast truncates constant value */
-#endif
-
-  DEBUGASSERT(uznum <= (size_t) CURL_MASK_SCOFFT);
-  return (curl_off_t)(uznum & (size_t) CURL_MASK_SCOFFT);
-
-#if defined(__INTEL_COMPILER) || defined(_MSC_VER)
-#  pragma warning(pop)
-#endif
-}
-
-/*
 ** unsigned size_t to signed int
 */
 
@@ -141,8 +126,8 @@ int curlx_uztosi(size_t uznum)
 unsigned long curlx_uztoul(size_t uznum)
 {
 #ifdef __INTEL_COMPILER
-# pragma warning(push)
-# pragma warning(disable:810) /* conversion may lose significant bits */
+#  pragma warning(push)
+#  pragma warning(disable:810) /* conversion may lose significant bits */
 #endif
 
 #if ULONG_MAX < SIZE_T_MAX
@@ -151,7 +136,7 @@ unsigned long curlx_uztoul(size_t uznum)
   return (unsigned long)(uznum & (size_t) CURL_MASK_ULONG);
 
 #ifdef __INTEL_COMPILER
-# pragma warning(pop)
+#  pragma warning(pop)
 #endif
 }
 
@@ -162,8 +147,8 @@ unsigned long curlx_uztoul(size_t uznum)
 unsigned int curlx_uztoui(size_t uznum)
 {
 #ifdef __INTEL_COMPILER
-# pragma warning(push)
-# pragma warning(disable:810) /* conversion may lose significant bits */
+#  pragma warning(push)
+#  pragma warning(disable:810) /* conversion may lose significant bits */
 #endif
 
 #if UINT_MAX < SIZE_T_MAX
@@ -172,7 +157,7 @@ unsigned int curlx_uztoui(size_t uznum)
   return (unsigned int)(uznum & (size_t) CURL_MASK_UINT);
 
 #ifdef __INTEL_COMPILER
-# pragma warning(pop)
+#  pragma warning(pop)
 #endif
 }
 
@@ -338,29 +323,7 @@ size_t curlx_sitouz(int sinum)
 #endif
 }
 
-#ifdef USE_WINSOCK
-
-/*
-** curl_socket_t to signed int
-*/
-
-int curlx_sktosi(curl_socket_t s)
-{
-  return (int)((ssize_t) s);
-}
-
-/*
-** signed int to curl_socket_t
-*/
-
-curl_socket_t curlx_sitosk(int i)
-{
-  return (curl_socket_t)((ssize_t) i);
-}
-
-#endif /* USE_WINSOCK */
-
-#if defined(WIN32) || defined(_WIN32)
+#if defined(_WIN32)
 
 ssize_t curlx_read(int fd, void *buf, size_t count)
 {
@@ -372,56 +335,8 @@ ssize_t curlx_write(int fd, const void *buf, size_t count)
   return (ssize_t)write(fd, buf, curlx_uztoui(count));
 }
 
-#endif /* WIN32 || _WIN32 */
+#endif /* _WIN32 */
 
-#if defined(__INTEL_COMPILER) && defined(__unix__)
-
-int curlx_FD_ISSET(int fd, fd_set *fdset)
-{
-  #pragma warning(push)
-  #pragma warning(disable:1469) /* clobber ignored */
-  return FD_ISSET(fd, fdset);
-  #pragma warning(pop)
-}
-
-void curlx_FD_SET(int fd, fd_set *fdset)
-{
-  #pragma warning(push)
-  #pragma warning(disable:1469) /* clobber ignored */
-  FD_SET(fd, fdset);
-  #pragma warning(pop)
-}
-
-void curlx_FD_ZERO(fd_set *fdset)
-{
-  #pragma warning(push)
-  #pragma warning(disable:593) /* variable was set but never used */
-  FD_ZERO(fdset);
-  #pragma warning(pop)
-}
-
-unsigned short curlx_htons(unsigned short usnum)
-{
-#if (__INTEL_COMPILER == 910) && defined(__i386__)
-  return (unsigned short)(((usnum << 8) & 0xFF00) | ((usnum >> 8) & 0x00FF));
-#else
-  #pragma warning(push)
-  #pragma warning(disable:810) /* conversion may lose significant bits */
-  return htons(usnum);
-  #pragma warning(pop)
-#endif
-}
-
-unsigned short curlx_ntohs(unsigned short usnum)
-{
-#if (__INTEL_COMPILER == 910) && defined(__i386__)
-  return (unsigned short)(((usnum << 8) & 0xFF00) | ((usnum >> 8) & 0x00FF));
-#else
-  #pragma warning(push)
-  #pragma warning(disable:810) /* conversion may lose significant bits */
-  return ntohs(usnum);
-  #pragma warning(pop)
-#endif
-}
-
-#endif /* __INTEL_COMPILER && __unix__ */
+/* Ensure that warnless.h redefinitions continue to have an effect
+   in "unity" builds. */
+#undef HEADER_CURL_WARNLESS_H_REDEFS
